@@ -3,7 +3,7 @@ from supabase import create_client, Client
 from sentence_transformers import SentenceTransformer
 
 # 07_parser_final.py 에서 파서 클래스 가져오기
-from AdvancedManualParser import AdvancedManualParser
+from mocktest.AdvancedManualParser import AdvancedManualParser
 
 # ---------------------------------------------------------
 # [설정] Supabase 연결 및 타겟 설정

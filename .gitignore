@@ -1,2 +1,8 @@
 volumes/**
 __pycache__
+
+.env
+.DS_Store
+
+backend/logs
+backend/logs/*
