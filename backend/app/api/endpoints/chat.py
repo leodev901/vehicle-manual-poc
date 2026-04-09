@@ -3,7 +3,7 @@ from supabase import Client
 
 from app.schemas.response import CommonResponse
 from app.schemas.chat import ChatRequest
-from app.core.dependencies import get_supabase_client, get_llm_client
+from app.core.dependencies import get_supabase_client, get_llm_client, get_langchain_client
 
 from app.services.chat_service import ChatService
 
@@ -17,4 +17,14 @@ def chat(
     ):
 
     result = ChatService.chat(request, supabase, llm)
+    return CommonResponse.ok(result)
+
+@api_router.post("/chat/langchain", response_model=CommonResponse)
+def chat(
+    request: ChatRequest, 
+    supabase: Client = Depends(get_supabase_client),
+    langchain: dict = Depends(get_langchain_client),
+    ):
+
+    result = ChatService.chat_langchain(request, supabase, langchain)
     return CommonResponse.ok(result)
