@@ -39,12 +39,29 @@ MANUAL_KEYWORD_EXTRACTION_PROMPT = PromptTemplate.from_template("""
 """)
 
 
-
+# langchain_core의 ChatPromptTemplate은 role을 system, human, ai로 받습니다.
 RAG_CHAT_PROMPT = ChatPromptTemplate.from_messages([
     ("system", 
      "당신은 차량 매뉴얼을 안내하는 전문 AI 어시스턴트입니다.\n"
      "아래 검색된 매뉴얼 내용을 기반으로만 답변하세요.\n"
      "매뉴얼에 없는 내용은 '매뉴얼에서 확인되지 않는 내용입니다'라고 답변하세요."),
     ("system", "검색된 매뉴얼:\n{context}"),
-    ("user", "{question}"),
+    ("human", "{question}"),
 ])
+
+
+MOCK_CONTEXT = """[엔진오일 교환 주기 안내]
+
+1. 일반 조건
+- 주행거리: 10,000 ~ 15,000km
+- 교환기간: 12개월 (매년)
+* 거리와 기간 중 먼저 도래한 시점에 교체하십시오.
+
+2. 가혹 조건
+- 주행거리: 5,000 ~ 7,500km
+- 교환기간: 6개월
+* 시내 주행 위주, 잦은 공회전, 험로 주행 시 적용됩니다.
+
+3. 유의사항
+- 엔진오일 교환 시 오일 필터와 에어 클리너를 함께 교체하십시오.
+- 정기적으로 오일 레벨 게이지를 확인하여 양과 상태를 점검하십시오."""

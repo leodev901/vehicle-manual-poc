@@ -2,7 +2,8 @@
 from supabase import Client
 
 from app.schemas.chat import ChatRequest
-from app.prompts.chat_prompts import MANUAL_KEYWORD_EXTRACTION_PROMPT
+from app.prompts.chat_prompts import MANUAL_KEYWORD_EXTRACTION_PROMPT, RAG_CHAT_PROMPT, MOCK_CONTEXT
+
 
 class ChatService:
 
@@ -24,7 +25,7 @@ class ChatService:
                 )
             )
             keywords = response.output_text.strip()
-            data["keywords"] = keywords 
+
         elif provider.upper() == "GEMINI":
             client = llm[provider]
             response = client.models.generate_content(
@@ -34,26 +35,29 @@ class ChatService:
                 )
             )
             keywords = response.text.strip()
-            data["keywords"] = keywords 
+        # 키워드 결과 담기
+        data["keywords"] = keywords 
         
         
         #TODO: RAG
         # 생략
-        context = "스마트키는 전원 공급이 필요합니다...(생략)..."
+        context = MOCK_CONTEXT
         
         #TODO: LLM (최종 답변 생성)
-        from app.prompts.chat_prompts import RAG_CHAT_PROMPT  # 상단에 임포트 해도 됩니다
         
-        # ChatPromptTemplate은 역할별 메시지 배열을 만들어줍니다
-        messages = RAG_CHAT_PROMPT.format_messages(
-            context=context,
-            question=request.message
-        )
         
         # LangChain의 format_messages 반환값을 각 SDK에 맞는 형식으로 변환
         if provider.upper() == "OPENAI":
-            # OpenAI는 [{"role": "system", "content": "..."}, ...] 유지
+            # ChatPromptTemplate은 역할별 메시지 배열을 만들어줍니다
+            messages = RAG_CHAT_PROMPT.format_messages(
+                context=context,
+                question=request.message
+            )
+            # OpenAI는 [{"role": "system", "content": "..."}, ...] 형식 사용
             openai_messages = [{"role": msg.type, "content": msg.content} for msg in messages]
+            
+            print(openai_messages)
+            
             # 주의: system/human 등을 실제 OpenAI 롤(system/user 등)로 매핑 필요
             for msg in openai_messages:
                 if msg["role"] == "human": msg["role"] = "user"
@@ -71,12 +75,14 @@ class ChatService:
                 context=context,
                 question=request.message
             )
+            print(combined_prompt)
             final_response = client.models.generate_content(
                 model=model,
                 contents=combined_prompt
             )
             answer = final_response.text.strip()
-            
+        
+        # 답변 결과 답기 
         data["answer"] = answer
 
         #TODO: response
