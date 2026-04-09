@@ -8,7 +8,11 @@ httpx
 google-genai
 openai
 langchain_core
+langchain_openai
+langchain_google_genai
 langgraph
+
+
 
 httpx
 loguru
