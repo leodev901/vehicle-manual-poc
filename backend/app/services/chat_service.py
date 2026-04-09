@@ -1,5 +1,6 @@
 
 from supabase import Client
+from langchain_core.output_parsers import StrOutputParser
 
 from app.schemas.chat import ChatRequest
 from app.prompts.chat_prompts import MANUAL_KEYWORD_EXTRACTION_PROMPT, RAG_CHAT_PROMPT, MOCK_CONTEXT
@@ -88,7 +89,71 @@ class ChatService:
         #TODO: response
 
         return {
+            
+            }
+    
+    @staticmethod
+    def chat_langchain(request: ChatRequest, supabase: Client, langchain: dict):
+        """
+        LangChain을 사용하여 Chat을 workflow를 수행합니다.
+        """
+        data = {}
+
+        provider = request.llm_config.provider.lower() or "openai"
+        
+        # ==========================================
+        # 1. 선택된 LangChain 모델 인스턴스 가져오기
+        # ==========================================
+        active_llm = langchain.get(provider)
+
+
+        # ==========================================
+        # 2. 출력 파서 생성 : LLM의 복잡한 응답 객체에서 최종 텍스트만 쏙 빼주는 역할
+        # ==========================================
+        # 모델이 반환하는 복잡한 응답 객체(AIMessage)에서 
+        # 순수 텍스트(content)만 자동으로 추출해 주는 역할을 합니다.
+        output_parser = StrOutputParser()
+
+    
+        # ==========================================
+        # Step 1: 키워드 추출 체인 (LCEL)
+        # ==========================================
+        # prompt | llm | parser 순서로 흐르는 "파이프라인"을 조립합니다
+        keyword_chain = MANUAL_KEYWORD_EXTRACTION_PROMPT | active_llm | output_parser
+
+        # ==========================================
+        # 체인 실행 (.invoke) -> 프롬프트 채우기, API 호출, 텍스트 파싱이 한방에 처리됨!
+        # ==========================================
+        # 프롬프트 템플릿에 들어갈 변수만 딕셔너리로 넘겨주면, 
+        # 프롬프트 완성 -> 모델 호출 -> 텍스트 추출이 한 번에 처리됩니다.
+        keywords = keyword_chain.invoke({
+            "question": request.message
+        })
+        # 키워드 추출 저장
+        data["keywords"] = keywords
+
+        #TODO: RAG 검색 (생략)
+        context = MOCK_CONTEXT
+
+        # ==========================================
+        # Step 2: 최종 답변 생성 체인 (LCEL)
+        # ==========================================
+        rag_chain = RAG_CHAT_PROMPT | active_llm | output_parser
+
+        answer = rag_chain.invoke({
+            "context":context,
+            "question":request.message
+        })
+        # 최종 답변 저장
+        data["answer"] = answer
+        
+
+        #TODO: response
+
+        return {
             "request": request,
             "response":data
-            }
+        }
+        
+
         
