@@ -3,7 +3,7 @@
 차량 사용 매뉴얼(PDF)을 파싱하여 임베딩 기반 RAG(Retrieval-Augmented Generation)를 구성하고,  
 이를 기반으로 차량 사용 관련 질의에 응답하는 챗봇 PoC 프로젝트입니다.
 
-> **현재 상태**: 초기 개발 단계 (Backend 아키텍처 구축 완료, Chat/RAG 로직 개발 진행 중)
+> **현재 상태**: 초기 개발 단계 (Backend 아키텍처 구축 완료, 멀티 모델 Raw SDK 체제 & LangChain(LCEL) 기반 통합 파이프라인 투트랙 적용 완료, RAG 검색 연동 대기 중 - Mock Context 적용)
 
 ---
 
@@ -13,8 +13,8 @@
 |------|------|
 | **Backend** | FastAPI, Uvicorn, Pydantic |
 | **Database** | Supabase (PostgreSQL + pgvector) |
-| **LLM / RAG** | LangChain, LangGraph |
-| **Frontend** | HTML (개발 예정) |
+| **LLM / RAG** | LangChain, OpenAI, Google GenAI (멀티 모델 지원) |
+| **Frontend** | HTML, CSS, JS (기본 구조 작업 진행) |
 | **Infra** | Docker, Helm, GitHub Actions CI |
 | **Data Pipeline** | PyMuPDF, Sentence-Transformers, Pandas |
 
@@ -43,8 +43,9 @@ vehicle-manual-bot-LLM-RAG/
 │   │   ├── schemas/            # Pydantic 데이터 모델 (Request/Response)
 │   │   │   ├── response.py     # 통합 응답 규격 (CommonResponse)
 │   │   │   ├── healthz.py      # Health Check 요청 스키마
-│   │   │   └── chat.py         # Chat 요청/응답 스키마
+│   │   │   └── chat.py         # Chat 요청/응답 스키마 (LLM 모델 설정 포함)
 │   │   ├── services/           # 비즈니스 로직 계층
+│   │   │   ├── chat_service.py # 멀티 모델 (OpenAI, Gemini) 통신 및 Mock RAG 로직
 │   │   │   └── healthz_service.py
 │   │   └── main.py             # FastAPI App 팩토리 (lifespan 관리)
 │   ├── docs/                   # 차량 매뉴얼 PDF 원본
@@ -53,7 +54,7 @@ vehicle-manual-bot-LLM-RAG/
 │   ├── requirements.txt        # Python 의존성 목록
 │   └── .env.example            # 환경 변수 템플릿
 ├── frontend/
-│   ├── app/                    # 프론트엔드 앱 (개발 예정)
+│   ├── app/                    # 프론트엔드 HTML 파일 (index.html 기초 뼈대)
 │   └── helm/                   # Frontend Helm Chart
 ├── mocktest/                   # 데이터 파이프라인 스크립트 (PDF 파싱 → 임베딩 → DB 저장)
 └── requirements.txt            # 데이터 파이프라인 의존성
@@ -77,6 +78,14 @@ Client Request
     ↓
 Client Response ← CommonResponse 규격으로 통일 응답
 ```
+
+### 멀티 모델 지원 & LCEL (LangChain Expression Language) 체제
+특정 LLM 벤더(OpenAI, Google)에 귀속되지 않는 범용적 챗봇을 설계했습니다.
+
+* **Registry 패턴 지원**: `core/llm.py`에서 등록 가능한 여러 모델(Raw SDK 및 LangChain ChatModel)을 딕셔너리 형태로 띄워 두고 DI로 주입받습니다.
+* **투트랙 전략 (`chat_service.py`)**:
+  * `chat()`: 각 제조사의 고유 파이썬 SDK 문법을 기반으로 분기(`if/elif`)하여 처리하는 로직
+  * `chat_langchain()`: LangChain의 **LCEL(`prompt | llm | parser`)** 문법을 활용, 제조사 인터페이스 차이를 흡수하고 단일화된 파이프라인으로 처리.
 
 ### 전역 예외 처리 (Global Exception Handler)
 `base/exceptions.py`에서 모든 예외를 중앙 관리하여, 각 계층(Router/Service/Repo)에서 `try-except` 없이 코드를 작성할 수 있습니다.
@@ -150,7 +159,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8009 --reload
 |--------|------|------|
 | `GET` | `/health` | 서버 생존 확인 (Liveness) |
 | `POST` | `/healthz` | DB 연결 상태 확인 (Readiness) |
-| `POST` | `/api/v1/chat` | 챗봇 질의 (개발 중) |
+| `POST` | `/api/v1/chat` | 챗봇 질의 (Raw SDK 기반 멀티 모델 분기 처리) |
+| `POST` | `/api/v1/chat/langchain` | 챗봇 질의 (LangChain LCEL 기반 단일 파이프라인 처리) |
 
 ---
 
