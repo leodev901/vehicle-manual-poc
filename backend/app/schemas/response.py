@@ -6,7 +6,7 @@ from pydantic import BaseModel
 T =TypeVar("T")
 
 class CommonResponse(BaseModel, Generic[T]):
-    http_status_code: int = HTTPStatus.OK
+    status_code: int = HTTPStatus.OK
     message: str = "요청이 완료되었습니다."
     data: T | None = None
 
@@ -21,34 +21,34 @@ class CommonResponse(BaseModel, Generic[T]):
     
     @staticmethod
     def created(data) :
-        return CommonResponse(http_status_code=HTTPStatus.CREATED, data=data)
+        return CommonResponse(status_code=HTTPStatus.CREATED, data=data)
     
     @staticmethod
     def no_content() -> "CommonResponse":
-        return CommonResponse(http_status_code=HTTPStatus.NO_CONTENT)
+        return CommonResponse(status_code=HTTPStatus.NO_CONTENT)
     
 
     # =====================
-    # 오류 메세지 리턴
+    # 오류 메세지 리턴 - 브라우저의 status_code는 200 ok로 응답 해주고, 내부적으로 error_code로 받아서 비즈니스적으로 에러처리를 할 때 사용
     # =====================
     
     @staticmethod
     def bad_request(message: str = "잘못된 요청입니다.") -> "CommonResponse":
-        return CommonResponse(http_status_code=HTTPStatus.BAD_REQUEST, message=message)
+        return CommonResponse(status_code=HTTPStatus.BAD_REQUEST, message=message)
 
     @staticmethod
     def not_found(message: str = "요청한 자원을 찾을 수 없습니다.") -> "CommonResponse":
-        return CommonResponse(http_status_code=HTTPStatus.NOT_FOUND, message=message)
+        return CommonResponse(status_code=HTTPStatus.NOT_FOUND, message=message)
 
     @staticmethod
     def unauthorized(message: str = "인증되지 않은 사용자입니다.") -> "CommonResponse":
-        return CommonResponse(http_status_code=HTTPStatus.UNAUTHORIZED, message=message)
+        return CommonResponse(status_code=HTTPStatus.UNAUTHORIZED, message=message)
       
     @staticmethod
     def error( message: str = "요청 처리 중 오류가 발생했습니다.") -> "CommonResponse":
-        return CommonResponse(http_status_code=HTTPStatus.INTERNAL_SERVER_ERROR, message=message)
+        return CommonResponse(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, message=message)
 
     @staticmethod
     def forbidden(message: str = "접근 권한이 없습니다.") -> "CommonResponse":
-        return CommonResponse(http_status_code=HTTPStatus.FORBIDDEN, message=message)
+        return CommonResponse(status_code=HTTPStatus.FORBIDDEN, message=message)
     

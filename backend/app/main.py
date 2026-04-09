@@ -1,6 +1,9 @@
 from fastapi import FastAPI
-from app.api.routes import register_reoutes
+from app.api.routes import register_routes
 from app.core.database import create_supabase_client
+from app.base.exceptions import register_exception_handlers
+from app.base.middleware import RequestLoggingMiddleware
+
 
 async def life_span(app: FastAPI) -> None:
     print("Starting up...")
@@ -21,7 +24,15 @@ def create_app() -> FastAPI:
         lifespan=life_span
     )
 
-    register_reoutes(app)
+    # endpoint router 등록
+    register_routes(app)
+
+    # exception handelr 등록
+    register_exception_handlers(app)
+
+    # logging middleware 등록
+    app.add_middleware(RequestLoggingMiddleware)
+
 
     return app
 
