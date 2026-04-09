@@ -10,21 +10,19 @@ from app.services.chat_service import ChatService
 api_router = APIRouter(prefix="/api/v1", tags=["chat"])
 
 @api_router.post("/chat", response_model=CommonResponse)
-def chat(
-    request: ChatRequest, 
-    supabase: Client = Depends(get_supabase_client),
-    llm: dict = Depends(get_llm_client),
-    ):
+async def chat(
+    payload: ChatRequest, 
+    chat_Service: ChatService = Depends(ChatService),
+):
 
-    result = ChatService.chat(request, supabase, llm)
+    result = await chat_Service.chat(payload)
     return CommonResponse.ok(result)
 
 @api_router.post("/chat/langchain", response_model=CommonResponse)
-def chat(
-    request: ChatRequest, 
-    supabase: Client = Depends(get_supabase_client),
-    langchain: dict = Depends(get_langchain_client),
-    ):
+async def chat_langchain(
+    payload: ChatRequest, 
+    chat_Service: ChatService = Depends(ChatService),
+):
 
-    result = ChatService.chat_langchain(request, supabase, langchain)
+    result = await chat_Service.chat_langchain(payload)
     return CommonResponse.ok(result)

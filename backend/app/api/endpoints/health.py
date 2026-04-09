@@ -1,6 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from supabase import Client
-from postgrest.exceptions import APIError
 
 from app.core.dependencies import get_supabase_client
 from app.base.logger import logger
@@ -26,9 +24,9 @@ async def error():
 @api_router.post("/healthz")
 async def healthz(
     payload: HealthzRequest,
-    supabase: Client = Depends(get_supabase_client),
+    healthz_service: HealthzService = Depends(HealthzService),
 ):
-    result = HealthzService.health_check(payload, supabase)
+    result = await healthz_service.health_check(payload)
     return CommonResponse.ok(result)
 
     

@@ -1,24 +1,35 @@
-
+from fastapi import Depends
 from supabase import Client
 from langchain_core.output_parsers import StrOutputParser
 
+from app.core.dependencies import get_supabase_client, get_llm_client, get_langchain_client
 from app.schemas.chat import ChatRequest
 from app.prompts.chat_prompts import MANUAL_KEYWORD_EXTRACTION_PROMPT, RAG_CHAT_PROMPT, MOCK_CONTEXT
 
 
 class ChatService:
 
-    @staticmethod
-    def chat(request: ChatRequest, supabase: Client, llm: dict):
+    def __init__(
+        self, 
+        supabase: Client = Depends(get_supabase_client), 
+        llm: dict = Depends(get_llm_client),
+        langchain: dict = Depends(get_langchain_client),
+    ):
+        self.supabase = supabase
+        self.llm = llm
+        self.langchain = langchain
+        
 
-        #TODO: Kewyrod Extraction w/ LLM
+    async def chat(self, request: ChatRequest):
+
+        #TODO: Kewyrod Extraction - LLM
         data = {}
         #TODO: session history 
         provider = request.llm_config.provider
         model = request.llm_config.model
 
         if provider.upper() == "OPENAI":
-            client = llm[provider]
+            client = self.llm[provider]
             response = client.responses.create(
                 model=model,
                 input=MANUAL_KEYWORD_EXTRACTION_PROMPT.format(
@@ -28,7 +39,7 @@ class ChatService:
             keywords = response.output_text.strip()
 
         elif provider.upper() == "GEMINI":
-            client = llm[provider]
+            client = self.llm[provider]
             response = client.models.generate_content(
                 model=model,
                 contents=MANUAL_KEYWORD_EXTRACTION_PROMPT.format(
@@ -36,17 +47,19 @@ class ChatService:
                 )
             )
             keywords = response.text.strip()
+        else:
+            raise ValueError(f"{provider} provider를 지원하지 않습니다.")    
+
         # 키워드 결과 담기
         data["keywords"] = keywords 
         
-        
+
         #TODO: RAG
         # 생략
         context = MOCK_CONTEXT
         
-        #TODO: LLM (최종 답변 생성)
-        
-        
+
+        #TODO: LLM (최종 답변 생성) - client는 앞선 client 사용
         # LangChain의 format_messages 반환값을 각 SDK에 맞는 형식으로 변환
         if provider.upper() == "OPENAI":
             # ChatPromptTemplate은 역할별 메시지 배열을 만들어줍니다
@@ -89,11 +102,11 @@ class ChatService:
         #TODO: response
 
         return {
-            
-            }
+            "request": request,
+            "response":data
+        }
     
-    @staticmethod
-    def chat_langchain(request: ChatRequest, supabase: Client, langchain: dict):
+    async def chat_langchain(self,request: ChatRequest):
         """
         LangChain을 사용하여 Chat을 workflow를 수행합니다.
         """
@@ -104,7 +117,7 @@ class ChatService:
         # ==========================================
         # 1. 선택된 LangChain 모델 인스턴스 가져오기
         # ==========================================
-        active_llm = langchain.get(provider)
+        active_llm = self.langchain.get(provider)
 
 
         # ==========================================
@@ -120,13 +133,14 @@ class ChatService:
         # ==========================================
         # prompt | llm | parser 순서로 흐르는 "파이프라인"을 조립합니다
         keyword_chain = MANUAL_KEYWORD_EXTRACTION_PROMPT | active_llm | output_parser
+        print(f"keyword_chain: {keyword_chain}")
 
         # ==========================================
         # 체인 실행 (.invoke) -> 프롬프트 채우기, API 호출, 텍스트 파싱이 한방에 처리됨!
         # ==========================================
         # 프롬프트 템플릿에 들어갈 변수만 딕셔너리로 넘겨주면, 
         # 프롬프트 완성 -> 모델 호출 -> 텍스트 추출이 한 번에 처리됩니다.
-        keywords = keyword_chain.invoke({
+        keywords = await keyword_chain.ainvoke({
             "question": request.message
         })
         # 키워드 추출 저장
@@ -139,8 +153,12 @@ class ChatService:
         # Step 2: 최종 답변 생성 체인 (LCEL)
         # ==========================================
         rag_chain = RAG_CHAT_PROMPT | active_llm | output_parser
+        print(f"rag_chain: {rag_chain}")
 
-        answer = rag_chain.invoke({
+        # ==========================================
+        # 체인 실행 (.invoke)
+        # ==========================================
+        answer = await rag_chain.ainvoke({
             "context":context,
             "question":request.message
         })
