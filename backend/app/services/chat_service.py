@@ -1,3 +1,4 @@
+import json
 from fastapi import Depends
 from supabase import Client
 from langchain_core.output_parsers import StrOutputParser
@@ -172,6 +173,57 @@ class ChatService:
             "request": request,
             "response":data
         }
+
+
+    async def chat_stream(self, payload:ChatRequest):
+        """
+        스트리밍 응답을 위한 제너레이터 함수
+        """
+
+        yield 'data: {"status": "processing", "message": "사용자 질의에서 키워드를 추출하고 있습니다."}\n\n'
         
+        # 선택된 모델 인스턴스 가져오기
+        provider = payload.llm_config.provider.lower() or "openai"
+        active_llm = self.langchain.get(provider)
+
+        # 출력 파서 생성
+        output_parser = StrOutputParser()
+
+        # 키워드 추출 진행
+        keyword_chain = MANUAL_KEYWORD_EXTRACTION_PROMPT | active_llm | output_parser
+        keywords = await keyword_chain.ainvoke({
+            "question": payload.message
+        })
+
+
+        yield 'data: {"status": "processing", "message": "임베딩 DB에서 관련 문서를 검색 중입니다..."}\n\n'
+
+        #TODO: RAG 검색 (생략)
+        context = MOCK_CONTEXT
+
+        yield 'data: {"status": "generating", "message": "답변을 생성 중입니다..."}\n\n'
+        rag_chain = RAG_CHAT_PROMPT | active_llm | output_parser
+
+        answer = ""
+        # astream()을 쓰면 응답이 '제너레이터' 형태로 변환
+        async for chunk in rag_chain.astream({
+            "context":context,
+            "question":payload.message
+        }): 
+            # 조각(chunk)이 생성될 때마다 메인 스레드에 실시간으로 전송(yield)
+            # SSE 표준 포맷(data: ... \n\n)에 맞춰서 전송
+            # yield f'data: {chunk}\n\n'
+
+            # LLM이 뱉어내는 텍스트 조각(chunk) 중에 만약 문단 바꿈(엔터 키, \n)이 섞여 있으면, 프론트엔드가 파싱하다가 에러 발생
+            # -> 해결 이 부분만 json.dumps로 한 겹 싸서 보내시면
+            print(chunk)
+            answer += chunk
+            yield f'data: {json.dumps(chunk, ensure_ascii=False)}\n\n'
+
+
+        # 스트리밍 종료
+        yield 'data: [DONE]\n\n'
+        
+
 
         

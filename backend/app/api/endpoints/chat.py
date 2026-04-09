@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from supabase import Client
 
 from app.schemas.response import CommonResponse
@@ -26,3 +27,14 @@ async def chat_langchain(
 
     result = await chat_Service.chat_langchain(payload)
     return CommonResponse.ok(result)
+
+@api_router.post("/chat/stream")
+async def chat_stream(
+    payload: ChatRequest,
+    chat_service: ChatService = Depends(ChatService),
+):
+    # StreamingResponse 객체에 서비스의 제너레이터 함수를 통째로 넣어야 스트리밍 됨.
+    return StreamingResponse(
+        chat_service.chat_stream(payload),
+        media_type="text/event-stream", # 브라우저에게 "이거 안 끝나는 실시간 이벤트야!" 명시해줌
+    )
