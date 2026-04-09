@@ -2,13 +2,13 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class HealthzRequest(BaseModel):
-    schema: str | None = Field(default=None, description="Database schema", examples=[""])
-    table: str | None = Field(default=None, description="Database table", examples=[""])
+    schema_name: str | None = Field(default=None, description="Database schema name", examples=[""])
+    table_name: str | None = Field(default=None, description="Database table name", examples=[""])
     
 
-    @field_validator("schema", mode="before")
+    @field_validator("schema_name", mode="before")
     @classmethod
-    def validate_schema(cls, v: str | None) -> str :
+    def validate_schema_name(cls, v: str | None) -> str :
         # v가 None이면 ""이 되고, 글자면 앞뒤 공백을 자릅니다.
         normalized_v = str(v or "").strip()
         if not normalized_v:
@@ -18,9 +18,9 @@ class HealthzRequest(BaseModel):
             raise ValueError("스키마 이름에는 공백이 들어갈 수 없습니다.")
         return normalized_v.lower()
 
-    @field_validator("table", mode="before")
+    @field_validator("table_name", mode="before")
     @classmethod
-    def validate_table(cls, v: str | None) -> str :
+    def validate_table_name(cls, v: str | None) -> str :
         # v가 None이면 ""이 되고, 글자면 앞뒤 공백을 자릅니다.
         normalized_v = str(v or "").strip()
         if not normalized_v:
