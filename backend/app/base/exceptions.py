@@ -22,7 +22,7 @@ async def supabse_exception_handler(request: Request, exc: APIError):
     """Supabse(PostgRest)에서 발생하는 모든 APIError를 가로채서 FastAPI규격에 맞는 JSON 응답으로 반환합니다.
     """
     error_dtails = exc.json() if hasattr(exc, "json") else str(exc)
-    logger.error(f"{type(exc).__name__} - {error_dtails}")
+    logger.error(f"[{getattr(request.state,'trace_id','unknown')}] {type(exc).__name__} - {error_dtails}")
 
     return JSONResponse(
         status_code=HTTPStatus.BAD_REQUEST,
@@ -43,7 +43,7 @@ async def http_exception_handelr(request: Request, exc: HTTPException):
     """HTTPException을 던지면 이 핸들러가 잡아서 JSONResponse로 변환해서 리턴
     """
 
-    logger.error(f"{type(exc).__name__} -{exc.status_code}- {exc}")
+    logger.error(f"[{getattr(request.state,'trace_id','unknown')}] {type(exc).__name__} -{exc.status_code}- {exc}")
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -55,7 +55,7 @@ async def http_exception_handelr(request: Request, exc: HTTPException):
 
 # RequestValidationError
 async def request_validation_error_handler(request: Request, exc: RequestValidationError):
-    logger.error(f"{type(exc).__name__} - {exc}")
+    logger.error(f"[{getattr(request.state,'trace_id','unknown')}] {type(exc).__name__} - {exc}")
     return JSONResponse(
         status_code=HTTPStatus.BAD_REQUEST,
         content={
@@ -69,7 +69,7 @@ async def request_validation_error_handler(request: Request, exc: RequestValidat
 async def global_exception_handler(request: Request, exc: Exception):
     """global exception handler  - 최상위 Exception을 잡기 위한 핸들러
     """
-    logger.error(f"{type(exc).__name__} - {exc}")
+    logger.error(f"[{getattr(request.state,'trace_id','unknown')}] {type(exc).__name__} - {exc}")
     # raise HTTPException(status_code=500, detail="Internal server error")
     return JSONResponse(
         status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
