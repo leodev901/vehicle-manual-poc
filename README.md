@@ -191,36 +191,114 @@ uvicorn app.main:app --host 0.0.0.0 --port 8009 --reload
 
 ## Supabase Database 스키마
 
-### models (차량 모델 정보)
+### 1. brands (차량 브랜드 정보)
 ```sql
-CREATE TABLE vehicle_manual_rag.models (
-  model_id    VARCHAR NOT NULL PRIMARY KEY,
-  model_nm    VARCHAR NOT NULL,
-  lineup_id   VARCHAR NOT NULL,
-  gen_no      BIGINT  NOT NULL,
-  fuel_type   VARCHAR NOT NULL,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+create table vehicle_manual_rag.brands (
+  brand_id character varying not null,
+  brand_nm character varying not null,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone null default now(),
+  constraint brands_pkey primary key (brand_id)
+) TABLESPACE pg_default;
 ```
 
-### vehicle_manual (매뉴얼 임베딩 데이터)
+### 2. lineups (차량 라인업 정보)
 ```sql
-CREATE TABLE vehicle_manual_rag.vehicle_manual (
-  id          BIGSERIAL PRIMARY KEY,
-  model_name  TEXT NOT NULL,
-  heading     TEXT,
-  content     TEXT,
-  page_num    INTEGER,
-  metadata    JSONB,
-  embedding   vector,          -- pgvector 확장
-  fts         TSVECTOR          -- Full-Text Search
-);
-
--- 인덱스
-CREATE INDEX vehicle_manual_fts_idx 
-  ON vehicle_manual_rag.vehicle_manual USING gin (fts);
-
-CREATE INDEX vehicle_manual_embedding_idx 
-  ON vehicle_manual_rag.vehicle_manual USING hnsw (embedding vector_cosine_ops);
+create table vehicle_manual_rag.lineups (
+  lineup_id character varying not null default ''::character varying,
+  lineup_nm character varying not null,
+  brand_id character varying not null,
+  type character varying null,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
+  constraint lineups_pkey primary key (lineup_id),
+  constraint lineups_brand_id_fkey foreign KEY (brand_id) references vehicle_manual_rag.brands (brand_id)
+) TABLESPACE pg_default;
 ```
+
+### 3. models (차량 모델 정보)
+```sql
+create table vehicle_manual_rag.models (
+  model_id character varying not null,
+  model_nm character varying not null,
+  lineup_id character varying not null,
+  gen_no bigint not null,
+  fuel_type character varying not null,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
+  constraint models_pkey primary key (model_id),
+  constraint models_lineup_id_fkey foreign KEY (lineup_id) references vehicle_manual_rag.lineups (lineup_id)
+) TABLESPACE pg_default;
+```
+
+### 4. vehicle_manual (매뉴얼 임베딩 데이터)
+```sql
+create table vehicle_manual_rag.vehicle_manual (
+  id bigserial not null,
+  model_id character varying not null,
+  heading text null,
+  content text null,
+  page_num integer null,
+  metadata jsonb null,
+  embedding extensions.vector null,
+  fts tsvector null,
+  constraint vehicle_manual_pkey primary key (id),
+  constraint vehicle_manual_model_id_fkey foreign KEY (model_id) references vehicle_manual_rag.models (model_id)
+) TABLESPACE pg_default;
+
+-- 인덱스 및 트리거
+create index IF not exists vehicle_manual_fts_idx 
+  on vehicle_manual_rag.vehicle_manual using gin (fts) TABLESPACE pg_default;
+
+create index IF not exists vehicle_manual_embedding_idx 
+  on vehicle_manual_rag.vehicle_manual using hnsw (embedding extensions.vector_cosine_ops) TABLESPACE pg_default;
+
+create trigger tsvectorupdate BEFORE INSERT or update 
+  on vehicle_manual_rag.vehicle_manual for EACH row
+  execute FUNCTION vehicle_manual_rag.update_fts ();
+```
+
+
+### 5. 하이브리드 검색 함수 (Supabase RPC)
+```sql
+-- Arguments:
+-- query_text (text): 사용자가 입력한 검색어 원문 (키워드/문장)
+-- query_embedding (vector): 사용자가 입력한 검색어를 임베딩(숫자 배열)으로 변환한 값
+-- match_count (integer): 반환받을 최대 문서 조각 개수 (Top-K)
+-- filter_model (character varying): 필터링할 특정 차량 모델 ID
+-- full_text_weight (double): 키워드 일치 검색(FTS) 반영 가중치 비율 (예: 0.3)
+-- semantic_weight (double): 의미 기반 검색(Vector) 반영 가중치 비율 (예: 0.7)
+
+begin
+  return query (
+    select *
+    from vehicle_manual_rag.vehicle_manual
+    where model_id = filter_model  -- 특정 차량 모델(예: 아이오닉5)로만 범위 한정
+    order by
+      -- 1. 의미적 유사도 점수 (Semantic Search)
+      (semantic_weight * (1 - (vehicle_manual_rag.vehicle_manual.embedding <=> query_embedding))) +
+      
+      -- 2. 키워드 일치 점수 (Full-Text Search)
+      -- [수정된 부분] to_tsquery -> websearch_to_tsquery 로 변경!
+      -- 이유: 일반 to_tsquery는 사용자가 '배터리 교체'처럼 띄어쓰기를 입력하면 Syntax Error가 발생합니다.
+      -- websearch_to_tsquery를 쓰면 구글 검색처럼 자연어 띄어쓰기를 유연하게 파싱하므로 오류를 원천 차단합니다.
+      (full_text_weight * (ts_rank(vehicle_manual_rag.vehicle_manual.fts, websearch_to_tsquery('simple', query_text)))) desc
+      
+    limit match_count
+  );
+end;
+```
+
+#### 💡 [설명] 하이브리드 RAG 검색(Hybrid Search) 동작 원리
+이 SQL 함수는 데이터베이스에서 데이터를 "단순히 찾아오는 것"을 넘어, **두 가지 검색 점수를 수학적으로 혼합(Fusion)하여 순위를 매기는 핵심 RAG 엔진**입니다.
+
+1. **상호보완적 검색**:
+   * **Semantic Search (`<=> query_embedding`)**: 문맥(의미)을 이해합니다. 원본 문서에 '배터리'라는 단어가 없어도, 의미상 가까운 '방전'이라는 내용이 있다면 찾아냅니다. (코사인 유사도 거리 연산)
+   * **Full-Text Search (`ts_rank`)**: 단어의 일치도를 봅니다. '에러코드 E04' 처럼 정확하고 고유한 키워드가 포함된 문서를 절대 놓치지 않습니다.
+2. **수학적 가중치 결합 (Weight Combination)**:
+   * 두 점수에 각각 가중치(`semantic_weight`, `full_text_weight`)를 곱해 더합니다. 보통 벡터(의미)를 **0.7**, 키워드 검색을 **0.3**으로 조절하여 두 검색 기법의 장점만 취합니다.
+3. **오류 방지 설계 (websearch_to_tsquery)**:
+   * 사용자가 입력한 날것의 문자열(특수문자, 띄어쓰기 등)을 파싱하다 에러가 나는 것을 막기 위해 `websearch_to_tsquery`를 도입하여 시스템 안정성이 크게 올라갔습니다.
+4. **가중치 분배(Alpha Tuning)와 한계점 (RRF의 필요성)**:
+   * 두 가중치의 합을 1.0(예: 0.7 + 0.3)으로 맞추는 것이 업계 표준입니다. 이를 통해 "이번 검색은 의미에 70%, 키워드에 30% 비중을 둔다"는 직관적 제어가 가능합니다.
+   * **[엔터프라이즈 고도화 포인트]** 코사인 유사도 점수는 0~1 사이로 정규화되지만, `ts_rank`는 문서 길이에 따라 점수가 한계 없이 치솟을 수 있습니다. 따라서 추후 고도화 단계에서는 원시 점수의 곱셈 합산 방식을 뛰어넘어, 두 검색 결과의 **'등수(Rank)'**를 기반으로 융합하는 **RRF(Reciprocal Rank Fusion)** 기법으로 발전시킬 예정입니다.

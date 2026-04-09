@@ -30,8 +30,8 @@ def search_hybrid(user_query, top_k=3):
         "query_embedding": query_vector, # 벡터 검색용
         "match_count": top_k,            # 몇 개 가져올지
         "filter_model": TARGET_MODEL_NAME, # 모델명 필터링
-        "full_text_weight": 1.0,         # 키워드 가중치
-        "semantic_weight": 2.0           # 벡터 가중치 (의미 검색 중시)
+        "full_text_weight": 0.3,         # 키워드 가중치
+        "semantic_weight": 0.7           # 벡터 가중치 (의미 검색 중시)
     }
     
     # RPC 함수 호출 (스키마 명시 불필요, 함수는 public에 열려있음)

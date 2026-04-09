@@ -1,0 +1,6 @@
+sentence-transformers
+pymupdf
+pandas
+supabase
+uvicorn
+fastapi

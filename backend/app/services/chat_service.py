@@ -1,10 +1,12 @@
 import json
+import httpx
 from fastapi import Depends
 from supabase import Client
 from langchain_core.output_parsers import StrOutputParser
 
 from app.core.dependencies import get_supabase_client, get_llm_client, get_langchain_client
 from app.schemas.chat import ChatRequest
+from app.repositories.manual_repository import ManualRepository
 from app.prompts.chat_prompts import MANUAL_KEYWORD_EXTRACTION_PROMPT, RAG_CHAT_PROMPT, MOCK_CONTEXT
 
 
@@ -198,9 +200,38 @@ class ChatService:
 
         yield 'data: {"status": "processing", "message": "임베딩 DB에서 관련 문서를 검색 중입니다..."}\n\n'
 
-        #TODO: RAG 검색 (생략)
-        context = MOCK_CONTEXT
+        #TODO: RAG 검색 
+        # 임베딩 서버 호출
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "http://localhost:8010/api/v1/embed",
+                json={"text": keywords}
+            )
+            query_vector = response.json()["embedding"]
+            if not query_vector:
+                raise ValueError("임베딩 서버에서 벡터를 생성하지 못했습니다.")
 
+
+        # Supabase RAG 검색
+        repo = ManualRepository(self.supabase)
+        results = await repo.search_manual_rag(
+            model_id=payload.model_id,
+            query=keywords,
+            query_vector=query_vector,
+            top_k=5
+        )
+        for i, item in enumerate(results):
+            print(f"\n[{i+1}위] 📄 {item['heading']} (p.{item['page_num']})")
+            # 본문이 너무 길면 200자까지만 보여주기
+            preview = item['content'][:500].replace("\n", " ") + "..."
+            print(f"   내용: {preview}")
+
+        # 검색 결과에서 문서 텍스트만 추출
+        context = "\n\n".join([doc["content"] for doc in results])
+
+
+        #TODO: 최종 답변
+        
         yield 'data: {"status": "generating", "message": "답변을 생성 중입니다..."}\n\n'
         rag_chain = RAG_CHAT_PROMPT | active_llm | output_parser
 
