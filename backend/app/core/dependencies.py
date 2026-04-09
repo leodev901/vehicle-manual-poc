@@ -7,3 +7,9 @@ def get_supabase_client(request: Request) -> Client:
     """
     return request.app.state.supabase
  
+def get_llm_client(request: Request) -> dict:
+    """
+    Request 객체에서 app.state에 저장된 llm 클라이언트를 추출하여 반환합니다.
+    """
+    
+    return request.app.state.llm

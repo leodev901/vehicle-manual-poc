@@ -88,6 +88,26 @@ Client Response ← CommonResponse 규격으로 통일 응답
 | `APIError` (Supabase) | 400 | DB 통신 중 발생하는 에러 |
 | `Exception` (전역) | 500 | 예상하지 못한 모든 에러의 최종 방어막 |
 
+### 요청 추적 (Trace ID)
+모든 요청에 고유한 `trace_id`를 부여하여, 요청의 시작부터 에러 발생까지 전체 흐름을 하나의 ID로 추적할 수 있습니다.
+
+**동작 방식:**
+1. 클라이언트가 `trace-id` 헤더를 보내면 해당 값을 사용합니다.
+2. 헤더가 없으면 서버가 `uuid4`로 자동 생성합니다.
+3. `request.state.trace_id`에 저장되어 미들웨어 → 예외 핸들러까지 일관되게 전파됩니다.
+
+**로그 출력 예시:**
+```
+[INFO]  Request: [550e8400-e29b-41d4-a716-446655440000] 127.0.0.1 | POST | /healthz
+[INFO]  Response: [550e8400-e29b-41d4-a716-446655440000] 200
+[ERROR] [550e8400-e29b-41d4-a716-446655440000] HTTPException -404- Data not found
+```
+
+| 계층 | trace_id 활용 |
+|------|--------------|
+| `middleware.py` | 생성 및 Request/Response 로그에 기록 |
+| `exceptions.py` | 모든 예외 핸들러의 에러 로그에 기록 |
+
 ### 통합 응답 규격 (CommonResponse)
 모든 API 응답은 `CommonResponse` 모델로 감싸서 반환됩니다.
 
