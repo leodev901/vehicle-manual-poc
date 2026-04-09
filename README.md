@@ -3,7 +3,7 @@
 차량 사용 매뉴얼(PDF)을 파싱하여 임베딩 기반 RAG(Retrieval-Augmented Generation)를 구성하고,  
 이를 기반으로 차량 사용 관련 질의에 응답하는 챗봇 PoC 프로젝트입니다.
 
-> **현재 상태**: 초기 개발 단계 (Backend 아키텍처 구축 완료, 멀티 모델 Raw SDK 체제 & LangChain(LCEL) 기반 통합 파이프라인 투트랙 적용 완료, RAG 검색 연동 대기 중 - Mock Context 적용)
+> **현재 상태**: 초기 개발 단계 (Backend 클래스 기반 비동기(Async) DI ️아키텍처 구축 완료, SSE 스트리밍 챗봇 엔드포인트 적용 완료, RAG 검색 연동 대기 중 - Mock Context 적용)
 
 ---
 
@@ -70,14 +70,24 @@ vehicle-manual-bot-LLM-RAG/
 ```
 Client Request
     ↓
-[Router]        → HTTP 요청 수신, 파라미터 검증, 의존성 주입
+[Router]        → HTTP 요청 수신, 파라미터 검증 (비동기 처리)
+    ↓ (Depends()를 통한 Class DI 주입)
+[Service]       → 비즈니스 로직 처리, LCEL 체인 실행 및 Streaming (yield)
+    ↓ (AsyncClient 주입)
+[Repository]    → DB 비동기 쿼리 실행, 데이터 반환
     ↓
-[Service]       → 비즈니스 로직 처리, 도메인 규칙 판단
-    ↓
-[Repository]    → DB 쿼리 실행, 데이터 반환
-    ↓
-Client Response ← CommonResponse 규격으로 통일 응답
+Client Response ← CommonResponse 규격 또는 실시간 StreamingResponse(SSE) 반환
 ```
+
+### 비동기(Async) 의존성 주입 (Class-based DI)
+엔터프라이즈 환경에서의 테스트 용이성(Mocking)과 코드 유지보수성을 위해 FastAPI의 강력한 **의존성 주입(Dependency Injection)** 시스템을 활용합니다.
+* **Singleton 객체 관리**: 무거운 DB/LLM 연결 객체는 `main.py`의 `lifespan` 시점에서 단 1회만 비동기로 생성(`app.state`에 저장)됩니다.
+* **Class `__init__` DI**: 라우터에서 함수 파라미터로 무분별하게 객체를 넘기는 패턴(Parameter Explosion)을 방지하고, Service나 Repository 클래스 생성 시점에 `Depends()`를 통해 필요한 컴포넌트만 깔끔하게 주입받습니다.
+
+### 실시간 응답 스트리밍 (Server-Sent Events)
+답변 생성이 오래 걸리는 LLM의 단점을 극복하고 뛰어난 UX를 제공하기 위해 **SSE(Server-Sent Events)** 방식을 채택했습니다.
+* LangChain의 `.astream()`을 사용하여 LLM이 예측한 토큰(조각)을 생성 즉시 클라이언트 브라우저로 전송(`yield`)합니다.
+* 프론트엔드가 진행 상태를 알 수 있도록 `{"status": "processing", "message": "키워드 추출 중..."}` 과 같은 상태 값(Status)을 혼합하여 스트리밍합니다.
 
 ### 멀티 모델 지원 & LCEL (LangChain Expression Language) 체제
 특정 LLM 벤더(OpenAI, Google)에 귀속되지 않는 범용적 챗봇을 설계했습니다.
@@ -159,8 +169,9 @@ uvicorn app.main:app --host 0.0.0.0 --port 8009 --reload
 |--------|------|------|
 | `GET` | `/health` | 서버 생존 확인 (Liveness) |
 | `POST` | `/healthz` | DB 연결 상태 확인 (Readiness) |
-| `POST` | `/api/v1/chat` | 챗봇 질의 (Raw SDK 기반 멀티 모델 분기 처리) |
-| `POST` | `/api/v1/chat/langchain` | 챗봇 질의 (LangChain LCEL 기반 단일 파이프라인 처리) |
+| `POST` | `/api/v1/chat` | 챗봇 질의 (Raw SDK 기반 멀티 모델 단건 응답) |
+| `POST` | `/api/v1/chat/langchain` | 챗봇 질의 (LangChain LCEL 기반 단일 파이프라인 단건 응답) |
+| `POST` | `/api/v1/chat/stream` | 실시간 챗봇 질의 (LangChain LCEL 기반 SSE 스트리밍 응답) |
 
 ---
 
