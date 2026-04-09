@@ -5,8 +5,8 @@ pydantic-settings==2.12.0
 pydantic
 httpx
 
-# google-genai
-# openai
+google-genai
+openai
 langchain_core
 langgraph
 
