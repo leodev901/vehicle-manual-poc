@@ -20,8 +20,8 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        {/* Helm ConfigMap으로 주입된 런타임 환경변수를 로드합니다. */}
-        <script src="/config.js" defer />
+        {/* Helm ConfigMap으로 주입된 런타임 환경변수를 로드합니다. (동기적 실행을 위해 defer 제거) */}
+        <script src="/config.js" />
       </head>
       <body>{children}</body>
     </html>

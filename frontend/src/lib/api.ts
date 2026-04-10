@@ -7,17 +7,20 @@
 
 import type { Brand, Lineup, CarModel, CommonResponse } from '@/types'
 
-// 빌드 시점의 환경변수뿐만 아니라, Helm ConfigMap을 통해 브라우저에 주입된(window.ENV) 런타임 환경변수를 우선 참조합니다.
-const API_BASE = (typeof window !== 'undefined' && (window as any).ENV?.NEXT_PUBLIC_API_BASE_URL)
-  || process.env.NEXT_PUBLIC_API_BASE_URL
-  || '';
+// 호출 시점에 런타임 환경변수를 동적으로 가져오기 위한 함수입니다.
+// 모듈 로드 시점에 상수로 고정하면 config.js 로드 전일 경우 빈 값으로 고정되는 문제가 발생할 수 있습니다.
+const getApiBase = () => {
+  return (typeof window !== 'undefined' && (window as any).ENV?.NEXT_PUBLIC_API_BASE_URL)
+    || process.env.NEXT_PUBLIC_API_BASE_URL
+    || '';
+};
 
 /**
  * 공통 fetch 래퍼
  * 에러 발생 시 raw exception 대신 친화적인 에러 메시지로 변환
  */
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${getApiBase()}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   })
@@ -79,7 +82,7 @@ export async function streamChat({
   onError: (err: string) => void
 }) {
   try {
-    const resp = await fetch(`${API_BASE}/api/v1/chat/stream`, {
+    const resp = await fetch(`${getApiBase()}/api/v1/chat/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
