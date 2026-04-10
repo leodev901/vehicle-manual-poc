@@ -8,6 +8,7 @@ import ChatInput from '@/components/ChatInput'
 import type { ChatMessage, VehicleContext, LlmOptionKey } from '@/types'
 import { LLM_OPTIONS } from '@/types'
 import { streamChat } from '@/lib/api'
+import NotificationModal from '@/components/NotificationModal'
 
 /**
  * 메인 페이지
@@ -25,6 +26,10 @@ export default function HomePage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [selectedLlm, setSelectedLlm] = useState<LlmOptionKey>('GPT-5')
   const [isStreaming, setIsStreaming] = useState(false)
+  const [alertConfig, setAlertConfig] = useState<{ isOpen: boolean; message: string }>({
+    isOpen: false,
+    message: '',
+  })
 
   /** 선택된 LLM의 provider/model 정보 */
   const currentLlm = LLM_OPTIONS.find(o => o.label === selectedLlm) ?? LLM_OPTIONS[0]
@@ -56,6 +61,11 @@ export default function HomePage() {
   const handleSend = useCallback(async (text: string) => {
     if (isStreaming) return
 
+    if (!vehicleCtx.model) {
+      setAlertConfig({ isOpen: true, message: '상담을 시작하기 전에 차량 모델을 먼저 선택해주세요.' })
+      return
+    }
+
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: 'user',
@@ -77,9 +87,11 @@ export default function HomePage() {
     setMessages(prev => [...prev, userMsg, aiPlaceholder])
     setIsStreaming(true)
 
+
+
     await streamChat({
       sessionId,
-      modelId: vehicleCtx.model?.model_id ?? null,
+      modelId: vehicleCtx.model.model_id,
       message: text,
       llmProvider: currentLlm.provider,
       llmModel: currentLlm.model,
@@ -167,6 +179,13 @@ export default function HomePage() {
         {/* ── 하단 입력창 ── */}
         <ChatInput onSend={handleSend} disabled={isStreaming} />
       </div>
+
+      {/* 커스텀 알림 모달 */}
+      <NotificationModal
+        isOpen={alertConfig.isOpen}
+        message={alertConfig.message}
+        onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     </main>
   )
 }

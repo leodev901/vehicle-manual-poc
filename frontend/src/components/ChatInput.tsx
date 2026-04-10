@@ -82,11 +82,10 @@ export default function ChatInput({ disabled, onSend }: ChatInputProps) {
           id="btn-send"
           onClick={handleSend}
           disabled={!canSend}
-          className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 mb-0.5 transition-all duration-200 ${
-            canSend
+          className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 mb-0.5 transition-all duration-200 ${canSend
               ? 'signature-gradient text-on-primary shadow-lg shadow-primary/20 active:scale-90 hover:shadow-xl'
               : 'bg-surface-container-high text-on-surface-variant cursor-not-allowed'
-          }`}
+            }`}
         >
           <ArrowUp className="w-5 h-5" strokeWidth={2.5} />
         </button>
