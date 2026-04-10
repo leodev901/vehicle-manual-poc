@@ -34,7 +34,7 @@ export interface CommonResponse<T> {
 
 /** LLM 설정: chat/stream 요청에 포함 */
 export interface LlmConfig {
-  provider: 'openai' | 'google'
+  provider: 'openai' | 'gemini'
   model: string
 }
 
@@ -67,7 +67,7 @@ export interface ChatMessage {
 /** LLM 모델 설정 선택지 */
 export const LLM_OPTIONS = [
   { label: 'GPT-5', provider: 'openai', model: 'gpt-5-mini' },
-  { label: 'Gemini', provider: 'google', model: 'gemini-2.5-flash' },
+  { label: 'Gemini', provider: 'gemini', model: 'gemini-2.5-flash' },
 ] as const
 
 export type LlmOptionKey = (typeof LLM_OPTIONS)[number]['label']

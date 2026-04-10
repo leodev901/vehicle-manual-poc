@@ -116,7 +116,7 @@ export default function HomePage() {
         setMessages(prev =>
           prev.map(m =>
             m.id === aiMsgId
-              ? { ...m, content: `오류가 발생했습니다: ${err}`, isStreaming: false }
+              ? { ...m, content: `오류가 발생했습니다: ${err}`, statusMessage: undefined, isStreaming: false }
               : m
           )
         )

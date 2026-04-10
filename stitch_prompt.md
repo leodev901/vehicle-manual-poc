@@ -71,7 +71,7 @@ UI를 구성하는 컴포넌트를 설계할 때, 실제 백엔드 API와의 연
     "model_id": "선택된 차량의 ID (예: LX3HEV)",
     "llm_config": {
       "provider": "openai",
-      "model": "gpt-4o-mini"
+      "model": "gpt-5-nano"
     },
     "message": "스마트키 배터리가 방전되면 어떻게 하나요?"
   }

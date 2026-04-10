@@ -109,6 +109,14 @@ export async function streamChat({
 
         try {
           const parsed = JSON.parse(raw)
+          
+          // [추가] 백엔드가 전송한 에러 상태 감지
+          if (parsed.status === 'error') {
+            onError(parsed.message || '요청 처리 중 오류가 발생했습니다.')
+            await reader.cancel() // 스트림 리더 닫기
+            return
+          }
+
           // 백엔드가 보내는 status 이벤트 (예: 키워드 추출 중...)
           if (parsed.status && onStatusUpdate) {
             onStatusUpdate(parsed.message ?? '')
