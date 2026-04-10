@@ -3,7 +3,7 @@ from supabase import create_client, Client
 from sentence_transformers import SentenceTransformer
 
 # 07_parser_final.py 에서 파서 클래스 가져오기
-from mocktest.AdvancedManualParser import AdvancedManualParser
+from AdvancedManualParser import AdvancedManualParser
 
 # ---------------------------------------------------------
 # [설정] Supabase 연결 및 타겟 설정
@@ -12,11 +12,6 @@ from mocktest.AdvancedManualParser import AdvancedManualParser
 SUPABASE_URL = "https://bhxwivkmovmgptmuttbb.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoeHdpdmttb3ZtZ3B0bXV0dGJiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDA1ODEzNCwiZXhwIjoyMDc5NjM0MTM0fQ.toXpX7fo1GWTGmhSGSWDdecI_akc6JqozDKegqtfkvE"
 
-# 적재할 차량 모델명 (나중에 검색할 때 이 이름으로 필터링합니다)
-TARGET_MODEL_NAME = "LX3HEV"
-
-# PDF 파일 경로
-PDF_PATH = "app/docs/LX3HEV_2026_ko_KR.pdf"
 
 # ---------------------------------------------------------
 # [초기화] 클라이언트 및 모델 로드
@@ -25,7 +20,8 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 print("⏳ 임베딩 모델(multilingual-e5-large) 로딩 중... (첫 실행 시 다운로드 오래 걸림)")
 # e5-large 모델 (1024차원) 사용
-model = SentenceTransformer('intfloat/multilingual-e5-large')
+# [주의] main()의 파라미터 model(str)과 이름 충돌을 방지하기 위해 embedding_model로 명명
+embedding_model = SentenceTransformer('intfloat/multilingual-e5-large')
 print("✅ 모델 로딩 완료!")
 
 
@@ -42,11 +38,18 @@ def generate_embedding_text(chunk):
     full_text = f"passage: 제목: {chunk['heading']} 내용: {content_str} {table_str}"
     return full_text.strip()
 
-def main():
+def main( 
+    model:str="NQ5HEV", 
+    path:str="./docs/NQ5HEV_2025_KR.pdf",
+    heading_min_size:float=9.8
+):
+    TARGET_MODEL_NAME = model
+    PDF_PATH = path
+    
     print(f"\n🚀 [{TARGET_MODEL_NAME}] 매뉴얼 데이터 적재 시작")
     
     # 1. PDF 파싱
-    parser = AdvancedManualParser(PDF_PATH)
+    parser = AdvancedManualParser(PDF_PATH, heading_min_size)
     chunks = parser.run()
     
     print(f"📦 파싱 완료: 총 {len(chunks)}개 청크를 Supabase로 업로드합니다.")
@@ -58,11 +61,11 @@ def main():
         text_to_embed = generate_embedding_text(chunk)
         
         # 3. 벡터 생성 (list로 변환)
-        vector = model.encode(text_to_embed).tolist()
+        vector = embedding_model.encode(text_to_embed).tolist()
         
         # 4. DB에 넣을 데이터 구조 (SQL 스키마와 일치해야 함)
         row = {
-            "model_name": TARGET_MODEL_NAME,
+            "model_id": TARGET_MODEL_NAME,
             "heading": chunk["heading"],
             "content": " ".join(chunk["content"]), # 원본 텍스트
             "page_num": chunk["page"],
@@ -89,4 +92,10 @@ def main():
     print(f"\n✨ 모든 데이터 적재가 완료되었습니다! (Model: {TARGET_MODEL_NAME})")
 
 if __name__ == "__main__":
-    main()
+    # 1. 펠리세이드 (LX3HEV) - 본문 9.8pt, 제목 11.0pt
+    # 2. 스포티지 (NQ5HEV) - 본문 9.8pt, 제목 11.0pt
+    main(
+        model="NQ5HEV", 
+        path="./docs/NQ5HEV_2025_KR.pdf",
+        heading_min_size=9.8,
+    )

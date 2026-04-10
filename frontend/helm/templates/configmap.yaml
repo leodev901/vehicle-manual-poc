@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: health-chat-config
+  name: {{ .Release.Name }}-config
 data:
   config.js: |
     window.ENV = {

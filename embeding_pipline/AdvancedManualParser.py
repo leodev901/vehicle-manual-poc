@@ -2,13 +2,17 @@ import fitz
 import pandas as pd
 
 class AdvancedManualParser:
-    def __init__(self, pdf_path):
+    def __init__(self, pdf_path, heading_min_size=9.8):
         self.doc = fitz.open(pdf_path)
         self.parsed_data = []
         
         # [설정] 분석 단계(Step 1)에서 파악한 기준값들을 여기에 입력하세요!
         # (아래는 일반적인 차량 매뉴얼 기준 임시값입니다)
-        self.HEADING_MIN_SIZE = 11.0   # 이 크기 이상이면 제목으로 간주
+        # 펠리세이드 - LX3HEV
+        # self.HEADING_MIN_SIZE = 11.0   # 이 크기 이상이면 제목으로 간주
+        # 스포티지 - NQ5HEV
+        # self.HEADING_MIN_SIZE = 11.0   # 이 크기 이상이면 제목으로 간주
+        self.HEADING_MIN_SIZE = heading_min_size
         
         # [설정] 헤더/푸터 제거를 위한 Y축 좌표 (페이지 위아래 잘라낼 영역)
         self.MARGIN_TOP = 50     # 상단 50px 무시 (챕터명 등)

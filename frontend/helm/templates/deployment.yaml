@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: health-chat
+  name: vehicle-manual-bot
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: health-chat
+      app: vehicle-manual-bot
   template:
     metadata:
       labels:
-        app: health-chat
+        app: vehicle-manual-bot
     spec:
       containers:
-        - name: health-chat
+        - name: vehicle-manual-bot
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           volumeMounts:
@@ -32,4 +32,4 @@ spec:
       volumes:
         - name: config-volume
           configMap:
-            name: health-chat-config
+            name: {{ .Release.Name }}-config

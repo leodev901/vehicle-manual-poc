@@ -177,10 +177,31 @@ Client Response ← CommonResponse 규격 또는 실시간 StreamingResponse(SSE
 * **Singleton 객체 관리**: 무거운 DB/LLM 연결 객체는 `main.py`의 `lifespan` 시점에서 단 1회만 비동기로 생성(`app.state`에 저장)됩니다.
 * **Class `__init__` DI**: 라우터에서 함수 파라미터로 무분별하게 객체를 넘기는 패턴(Parameter Explosion)을 방지하고, Service나 Repository 클래스 생성 시점에 `Depends()`를 통해 필요한 컴포넌트만 깔끔하게 주입받습니다.
 
-### 실시간 응답 스트리밍 (Server-Sent Events)
-답변 생성이 오래 걸리는 LLM의 단점을 극복하고 뛰어난 UX를 제공하기 위해 **SSE(Server-Sent Events)** 방식을 채택했습니다.
-* LangChain의 `.astream()`을 사용하여 LLM이 예측한 토큰(조각)을 생성 즉시 클라이언트 브라우저로 전송(`yield`)합니다.
-* 프론트엔드가 진행 상태를 알 수 있도록 `{"status": "processing", "message": "키워드 추출 중..."}` 과 같은 상태 값(Status)을 혼합하여 스트리밍합니다.
+### 실시간 응답 스트리밍 & 예외 가딩 (SSE Architecture)
+답변 생성이 오래 걸리는 LLM의 단점을 극복하고 뛰어난 UX를 제공하기 위해 **SSE(Server-Sent Events)** 방식을 채택하고, 스트리밍 중 예외를 안전하게 가로채는 **Safe-Guard 아키텍처**를 구축했습니다.
+
+#### 1. SSE 통신 규격 (Protocol)
+서버는 데이터의 성격에 따라 **이벤트 타입**을 구분하여 전송함으로써 클라이언트가 효율적으로 처리할 수 있게 합니다.
+
+| 이벤트(Event) | 데이터(Data JSON) 필드 | 설명 | 예시 |
+| :--- | :--- | :--- | :--- |
+| **(default)** | `status` | 엔진의 동작 상태 업데이트 | `{"status": "processing", "message": "RAG 검색 중..."}` |
+| **(default)** | `token` | 실시간 생성된 답변 조각 | `{"token": "안녕하세요"}` |
+| **`error`** | `status`, `message` | **스트리밍 중 예외 발생** | `event: error\ndata: {"status": "error", "message": "..."}` |
+
+#### 2. Safe-Guard 기반 예외 처리 시나리오
+스트리밍은 일반적인 HTTP 요청과 달리 응답이 시작된 후(`200 OK`) 에러가 발생할 수 있습니다. 이를 위해 커스텀 응답 클래스와 이벤트 규격을 도입했습니다.
+
+*   **백엔드 (`SafeGuardStreamingResponse`)**: 
+    *   Python 제너레이터 실행 중 발생하는 모든 예외를 `try-except`로 캡처합니다.
+    *   예외 발생 시 스트림을 끊지 않고, **`event: error`** 타겟과 함께 에러 JSON을 `yield` 한 뒤 우아하게 종료합니다.
+*   **프론트엔드 (`streamChat`)**:
+    *   수신된 데이터에서 **`event: error` 또는 데이터 내 `status: "error"`**를 감지하면 즉시 스트림을 해제합니다.
+    *   UI 상에서 "처리 중..." 메시지를 제거하고, 사용자에게 에러 안내를 표시하여 세션을 복구합니다.
+
+#### 3. 장애 대응(Resilience) 결과
+- **기존**: 스트리밍 중 에러 발생 시 브라우저 콘솔에만 에러가 찍히고 화면은 '답변 생성 중'에 멈춤.
+- **현재**: 에러 발생 시 화면에 "오류가 발생했습니다: [원인]" 메시지가 즉각 노출되며 대화 세션 정상 유지.
 
 ### 멀티 모델 지원 & LCEL (LangChain Expression Language) 체제
 특정 LLM 벤더(OpenAI, Google)에 귀속되지 않는 범용적 챗봇을 설계했습니다.
@@ -271,17 +292,86 @@ uvicorn app.main:app --host 0.0.0.0 --port 8009 --reload
 
 ---
 
-## 데이터 파이프라인 (mocktest/)
+## 🔬 핵심 기술: 데이터 파이프라인 (`embeding_pipline/`)
 
-차량 매뉴얼 PDF를 파싱하여 Supabase에 임베딩 데이터를 저장하는 스크립트 모음입니다.
+> **RAG 챗봇의 답변 품질은 단 하나, "어떻게 문서를 청크로 쪼갰는가"에 달려 있습니다.**
+> 이 프로젝트는 단순히 PDF를 텍스트로 변환하는 수준을 넘어, **데이터 기반의 과학적 파싱 전략**을 도입하여 검색 정확도를 극대화했습니다.
 
-| 파일 | 설명 |
+### Step 1: 데이터 기반 PDF 구조 분석 (`06_analyze_new_pdf.py`)
+
+가장 먼저, 매뉴얼 PDF의 **폰트 크기(Size)와 굵기(Bold)** 분포를 통계적으로 분석합니다. 이를 통해 "어느 사이즈가 본문이고, 어느 사이즈가 제목인가"를 **임의적 추측이 아닌 데이터로 결정**합니다.
+
+```
+# 기아 스포티지(NQ5HEV) 매뉴얼 분석 결과 예시
+Size: 8.8  | Count: 1400 | Font: Light   → ✅ 본문 (Body)
+Size: 9.8  | Count: 298  | Font: Bold    → ✅ 소제목 (Heading) ← 청킹 기준
+Size: 10.8 | Count: 17   | Font: Bold    → ✅ 대단원 제목 (Chapter)
+Size: 6.3  | Count: 434  | Font: Light   → ❌ 표 안의 텍스트 (필터링)
+Size: 4.9  | Count: 118  | Font: Regular → ❌ 페이지 번호/캡션 (필터링)
+```
+
+**청킹 임계값 결정 공식**: `HEADING_MIN_SIZE = (본문 사이즈 + 소제목 사이즈) / 2`
+> 예: `(8.8 + 9.8) / 2 = 9.3` → 안전하게 **`9.5`** 설정, 단 `Bold` 조건을 함께 사용하여 오탐 방지
+
+---
+
+### Step 2: 폰트-인식 지능형 파싱 (`AdvancedManualParser.py`)
+
+분석 결과를 기반으로, 단순 텍스트 변환이 아닌 **의미 단위(Semantic Unit)로 문서를 분리**합니다.
+
+| 처리 기법 | 구현 방법 | 목적 |
+| :--- | :--- | :--- |
+| **폰트 기반 헤더 감지** | `size >= HEADING_MIN_SIZE and is_bold` | 새로운 청크 경계 탐지 |
+| **헤더/푸터 제거** | Y축 마진(Top/Bottom) 좌표 필터링 | 페이지 번호, 챕터명 노이즈 제거 |
+| **표(Table) 구조 보존** | `page.find_tables()` + Markdown 변환 | 사양 데이터가 담긴 표 정보 유실 방지 |
+| **표 영역 중복 방지** | bounding box 교차(`intersects`) 검사 | 표 텍스트 이중 추출 방지 |
+
+```python
+# 청킹 핵심 로직 (AdvancedManualParser.py)
+if size >= self.HEADING_MIN_SIZE and is_bold:
+    # 새로운 의미 단위 시작 → 이전 청크 저장 후 새 청크 오픈
+    self.parsed_data.append(current_chunk)
+    current_chunk = {"heading": text, "content": [], "tables": []}
+else:
+    current_chunk["content"].append(text)  # 본문 누적
+```
+
+---
+
+### Step 3: E5 모델 임베딩 최적화 (`08_save_manual_embading_db.py`)
+
+임베딩 모델로 **`intfloat/multilingual-e5-large`**(1024차원)를 사용합니다. e5 모델은 **접두어(Prefix) 방식**의 입력 포맷이 있으며, 이를 무시하면 검색 정확도가 크게 저하됩니다.
+
+```python
+# e5 모델 성능 최적화: "passage:" 접두어 필수 적용
+def generate_embedding_text(chunk):
+    """
+    문서(Passage)를 임베딩할 때 반드시 "passage: " 접두어를 붙여야 합니다.
+    검색 쿼리에는 "query: " 접두어를 붙입니다. (비대칭 임베딩)
+    """
+    full_text = f"passage: 제목: {chunk['heading']} 내용: {content_str} {table_str}"
+    return full_text.strip()
+```
+
+| 구분 | 접두어 | 예시 |
+| :--- | :--- | :--- |
+| **문서 저장 시** | `passage:` | `passage: 제목: 스마트키 배터리 교체 내용: ...` |
+| **쿼리 검색 시** | `query:` | `query: 스마트키 배터리 교체 방법` |
+
+> 🔑 **왜 중요한가?** e5 모델은 비대칭 훈련(Asymmetric Training)을 통해 길고 상세한 문서(passage)와 짧은 검색어(query)의 임베딩 공간을 다르게 학습합니다. 접두어를 사용해야 모델이 자신이 처리하는 텍스트의 역할을 정확히 인지하여 최적의 벡터를 생성합니다.
+
+---
+
+### 파이프라인 스크립트 목록
+
+| 파일 | 역할 |
 |------|------|
-| `01_connection_test.py` | DB 연결 테스트 |
-| `06_analyze_new_pdf.py` | PDF 구조 분석 |
-| `07_parser_final.py` | 매뉴얼 파싱 (최종 버전) |
-| `08_save_manual_embading_db.py` | 임베딩 생성 및 DB 저장 |
-| `09_hybrid_search_manual.py` | 하이브리드 검색 테스트 (Vector + FTS) |
+| `01_connection_test.py` | DB 연결 검증 |
+| `06_analyze_new_pdf.py` | **PDF 폰트 구조 분석 → 청킹 기준 도출** |
+| `07_parser_final.py` | 파서 단독 실행 및 결과 검증 |
+| `AdvancedManualParser.py` | **폰트-인식 지능형 파서 (핵심 모듈)** |
+| `08_save_manual_embading_db.py` | **E5 임베딩 생성 및 Supabase 배치 업로드** |
+| `09_hybrid_search_manual.py` | 하이브리드 검색 정확도 검증 (Vector + FTS) |
 
 ---
 

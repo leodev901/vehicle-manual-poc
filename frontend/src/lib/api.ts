@@ -7,7 +7,10 @@
 
 import type { Brand, Lineup, CarModel, CommonResponse } from '@/types'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || ''
+// 빌드 시점의 환경변수뿐만 아니라, Helm ConfigMap을 통해 브라우저에 주입된(window.ENV) 런타임 환경변수를 우선 참조합니다.
+const API_BASE = (typeof window !== 'undefined' && (window as any).ENV?.NEXT_PUBLIC_API_BASE_URL)
+  || process.env.NEXT_PUBLIC_API_BASE_URL
+  || '';
 
 /**
  * 공통 fetch 래퍼
@@ -95,40 +98,56 @@ export async function streamChat({
     const reader = resp.body.getReader()
     const decoder = new TextDecoder()
 
+    let currentEvent = 'message' // 기본 이벤트 타입
+
     while (true) {
       const { value, done } = await reader.read()
       if (done) break
 
       const chunk = decoder.decode(value, { stream: true })
-      // SSE 포맷 파싱: "data: {...}\n\n"
       const lines = chunk.split('\n')
+
       for (const line of lines) {
-        if (!line.startsWith('data: ')) continue
-        const raw = line.slice(6).trim()
-        if (!raw || raw === '[DONE]') continue
+        const trimmedLine = line.trim()
+        if (!trimmedLine) continue
 
-        try {
-          const parsed = JSON.parse(raw)
-          
-          // [추가] 백엔드가 전송한 에러 상태 감지
-          if (parsed.status === 'error') {
-            onError(parsed.message || '요청 처리 중 오류가 발생했습니다.')
-            await reader.cancel() // 스트림 리더 닫기
-            return
+        // 1. 이벤트 타입 감지 (예: event: error)
+        if (trimmedLine.startsWith('event:')) {
+          currentEvent = trimmedLine.replace('event:', '').trim()
+          continue
+        }
+
+        // 2. 데이터 처리
+        if (trimmedLine.startsWith('data:')) {
+          const raw = trimmedLine.replace('data:', '').trim()
+          if (!raw || raw === '[DONE]') continue
+
+          try {
+            const parsed = JSON.parse(raw)
+
+            // [개선] 이벤트 타입이 error이거나 데이터 내 status가 error인 경우 모두 체크
+            if (currentEvent === 'error' || parsed.status === 'error') {
+              onError(parsed.message || '요청 처리 중 오류가 발생했습니다.')
+              await reader.cancel()
+              return
+            }
+
+            // 상태 업데이트 처리
+            if (parsed.status && onStatusUpdate) {
+              onStatusUpdate(parsed.message ?? '')
+            } else if (parsed.token) {
+              onChunk(parsed.token)
+            } else if (typeof parsed === 'string') {
+              onChunk(parsed)
+            }
+          } catch {
+            onChunk(raw)
           }
 
-          // 백엔드가 보내는 status 이벤트 (예: 키워드 추출 중...)
-          if (parsed.status && onStatusUpdate) {
-            onStatusUpdate(parsed.message ?? '')
-          } else if (parsed.token) {
-            // 실제 LLM 토큰
-            onChunk(parsed.token)
-          } else if (typeof parsed === 'string') {
-            onChunk(parsed)
+          // 데이터 처리 후 이벤트 타입 초기화 (SSE 표준: 다음 공백 라인 전까지 유지되나 여기선 라인 단위 처리)
+          if (line.endsWith('\n\n')) {
+            currentEvent = 'message'
           }
-        } catch {
-          // JSON 파싱 실패 시 raw 텍스트를 직접 사용
-          onChunk(raw)
         }
       }
     }

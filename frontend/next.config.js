@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   /* 
    * 백엔드 API 프록시 설정
    * 로컬 개발 시 CORS 문제 없이 백엔드를 호출하기 위한 rewrites
