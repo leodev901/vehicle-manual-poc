@@ -1,6 +1,8 @@
 import json
 import uuid
+import asyncio
 from fastapi import Request
+from fastapi.responses import StreamingResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.base.logger import logger
@@ -12,7 +14,6 @@ EXCLUDE_PATH = [
     "/openapi.json",
     "/openapi.yaml",
 ]
-
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -30,12 +31,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         logger.info(f"Request: [{trace_id}] {request.client.host if request.client else 'unknown'} | {request.method} | {request.url}")
         logger.info(f"Headers: [{trace_id}] {json.dumps(dict(request.headers), indent=2, ensure_ascii=False)}")
 
-        try:
-            response = await call_next(request)
-            logger.info(f"Response: [{trace_id}] {response.status_code} ")
-            return response
-        except Exception as e:
-            logger.error(f"[{trace_id}] {type(e).__name__} - {e}")
-            raise e
-        
+        response = await call_next(request)
+        logger.info(f"Response: [{trace_id}] {response.status_code} ")
+        return response
+
+    
     

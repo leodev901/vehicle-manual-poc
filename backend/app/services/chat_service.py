@@ -12,6 +12,11 @@ from app.core.config import settings
 
 class ChatService:
 
+    PROVIDER = [
+        "openai",
+        "gemini"
+    ]
+
     def __init__(
         self, 
         supabase: Client = Depends(get_supabase_client), 
@@ -186,6 +191,8 @@ class ChatService:
         
         # 선택된 모델 인스턴스 가져오기
         provider = payload.llm_config.provider.lower() or "openai"
+        if provider not in self.PROVIDER:
+            raise ValueError(f"지원하지 않는 LLM 제공자입니다: {provider}")
         active_llm = self.langchain.get(provider)
 
         # 출력 파서 생성
@@ -256,7 +263,7 @@ class ChatService:
             # yield f'data: {chunk}\n\n'
 
             # LLM이 뱉어내는 텍스트 조각(chunk) 중에 만약 문단 바꿈(엔터 키, \n)이 섞여 있으면, 프론트엔드가 파싱하다가 에러 발생
-            # -> 해결 이 부분만 json.dumps로 한 겹 싸서 보내시면
+            # -> 해결 이 부분만 json.dumps로 한 겹 싸서 보낸다.
             # print(chunk)
             answer += chunk
             yield f'data: {json.dumps(chunk, ensure_ascii=False)}\n\n'

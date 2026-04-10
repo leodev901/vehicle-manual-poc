@@ -35,7 +35,11 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
 
     
-    # CORS 미들웨어 추가 (프론트엔드 호출 허용)
+    
+    # logging middleware 등록
+    app.add_middleware(RequestLoggingMiddleware)
+    
+    # CORS 미들웨어 추가 (프론트엔드 호출 허용) - 가장 마지막에 추가
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"], # 실무에서는 Vercel 도메인으로 특정하는 것이 안전합니다.
@@ -43,9 +47,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    # logging middleware 등록
-    app.add_middleware(RequestLoggingMiddleware)
-    
 
 
     return app
