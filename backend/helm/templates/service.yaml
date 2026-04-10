@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: health-chat-api
+  name: vehicle-manual-bot-api
 spec:
   selector:
-    app: health-chat-api
+    app: vehicle-manual-bot-api
   ports:
     - name: http
       port: {{ .Values.service.port }}

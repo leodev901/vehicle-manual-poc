@@ -1,4 +1,6 @@
 apiVersion: v2
-name: health-chat-api
+name: vehicle-manual-bot-api
+description: Vehicle Manual Bot API with LLM RAG Embedding
+type: application
 version: 0.1.0
 appVersion: "0.1.0"

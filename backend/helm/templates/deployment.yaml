@@ -1,29 +1,65 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: health-chat-api
+  name: vehicle-manual-bot-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: health-chat-api
+      app: vehicle-manual-bot-api
   template:
     metadata:
       labels:
-        app: health-chat-api
+        app: vehicle-manual-bot-api
     spec:
       containers:
-        - name: health-chat-api
+        - name: vehicle-manual-bot-api
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           envFrom:
+            # configmap.yaml 파일을 컨테이너 환경 변수로 자동할당
             - configMapRef:
                 name: {{ .Release.Name }}-config
+            # secret.yaml 파일을 컨테이너 환경 변수로 자동할당 
+            - secretRef:
+                name: {{ .Release.Name }}-secret
           ports:
-            - containerPort: 8080
+            - containerPort: {{ .Values.service.targetPort }}
           readinessProbe:
             httpGet:
               path: /healthz
-              port: 8080
+              port: {{ .Values.service.targetPort }}
             initialDelaySeconds: 3
             periodSeconds: 360
+          # 위에서 'secretRef' 사용해서 아래는 불필요함
+          # env:
+          #   - name: SUPABASE_URL
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: {{ .Release.Name }}-secret
+          #         key: SUPABASE_URL
+          #   - name: SUPABASE_KEY
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: {{ .Release.Name }}-secret
+          #         key: SUPABASE_KEY
+          #   - name: DATABASE_URL
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: {{ .Release.Name }}-secret
+          #         key: DATABASE_URL
+          #   - name: OPENAI_API_KEY
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: {{ .Release.Name }}-secret
+          #         key: OPENAI_API_KEY
+          #   - name: GEMINI_API_KEY
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: {{ .Release.Name }}-secret
+          #         key: GEMINI_API_KEY
+          #   - name: HF_TOKEN
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: {{ .Release.Name }}-secret
+          #         key: HF_TOKEN 
