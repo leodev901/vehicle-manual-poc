@@ -1,13 +1,17 @@
 from supabase import AsyncClient
-
-from sentence_transformers import SentenceTransformer
+from fastapi import Depends
+from app.core.dependencies import get_supabase_client
+# from sentence_transformers import SentenceTransformer
 
 # 임베딩 모델 로드 별도 inference_server 서버에 모델 기동
 # embedding = SentenceTransformer('intfloat/multilingual-e5-large')
 
 
 class ManualRepository:
-    def __init__(self, supabase: AsyncClient):
+    def __init__(
+        self, 
+        supabase: AsyncClient = Depends(get_supabase_client)
+    ):
         self.supabase = supabase
 
     # 차량 브랜드 조회
@@ -20,12 +24,16 @@ class ManualRepository:
         response = await self.supabase.schema("vehicle_manual_rag").table("lineups").select("*").eq("brand_id", brand_id).execute()
         return response.data
 
-    # 선택된 라인어    
+    # 선택된 라인업의 모댈 조회 
+    async def list_models(self, lineup_id:str):
+        response = await self.supabase.schema("vehicle_manual_rag").table("models").select("*").eq("lineup_id", lineup_id).execute()
+        return response.data   
 
     # RAG 하이브리드 검색 함수 (조회용)
     async def search_manual_rag(self, model_id:str, query:str, query_vector:list[float], top_k: int=5):
         """
-        하이브리드 검색 수행 함수
+        하이브리드 검색 수행 함수 
+        임베딩 모델은 별도 외부 inference_server에서 작업해서 받도록 정정함
         """
         # 1. 쿼리 임베딩
         # e5 모델은 검색어(Query) 앞에 반드시 "query: "를 붙여야 합니다.

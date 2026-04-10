@@ -23,5 +23,5 @@ class HealthzService:
         if not data: 
             # 데이터가 없을 경우 HTTPException
             raise HTTPException(status_code=404, detail="Data not found")
-        return data    
+        return data
             

@@ -18,5 +18,8 @@ class Settings(BaseSettings):
     GEMINI_API_KEY:str
     GEMINI_MODEL:str
 
+    HF_INFERENCE_URL:str = "https://leodev901-inference-server.hf.space/api/v1/embed"
+    HF_TOKEN:str
+
 
 settings = Settings()

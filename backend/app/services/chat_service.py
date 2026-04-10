@@ -8,7 +8,7 @@ from app.core.dependencies import get_supabase_client, get_llm_client, get_langc
 from app.schemas.chat import ChatRequest
 from app.repositories.manual_repository import ManualRepository
 from app.prompts.chat_prompts import MANUAL_KEYWORD_EXTRACTION_PROMPT, RAG_CHAT_PROMPT, MOCK_CONTEXT
-
+from app.core.config import settings
 
 class ChatService:
 
@@ -197,16 +197,26 @@ class ChatService:
             "question": payload.message
         })
 
+        print(f"keywords: {keywords}")
+
 
         yield 'data: {"status": "processing", "message": "임베딩 DB에서 관련 문서를 검색 중입니다..."}\n\n'
 
         #TODO: RAG 검색 
         # 임베딩 서버 호출
         async with httpx.AsyncClient(timeout=30.0) as client:
+            data = {
+                "text": keywords,
+            }
             response = await client.post(
-                "http://localhost:8010/api/v1/embed",
-                json={"text": keywords}
+                # "http://localhost:8010/api/v1/embed",
+                settings.HF_INFERENCE_URL,
+                headers={
+                    "Authorization": f"Bearer {settings.HF_TOKEN}"
+                },
+                json=data
             )
+            response.raise_for_status() 
             query_vector = response.json()["embedding"]
             if not query_vector:
                 raise ValueError("임베딩 서버에서 벡터를 생성하지 못했습니다.")
@@ -247,10 +257,10 @@ class ChatService:
 
             # LLM이 뱉어내는 텍스트 조각(chunk) 중에 만약 문단 바꿈(엔터 키, \n)이 섞여 있으면, 프론트엔드가 파싱하다가 에러 발생
             # -> 해결 이 부분만 json.dumps로 한 겹 싸서 보내시면
-            print(chunk)
+            # print(chunk)
             answer += chunk
             yield f'data: {json.dumps(chunk, ensure_ascii=False)}\n\n'
-
+        print(f"answer: {answer}")
 
         # 스트리밍 종료
         yield 'data: [DONE]\n\n'

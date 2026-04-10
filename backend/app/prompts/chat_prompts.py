@@ -33,9 +33,8 @@ MANUAL_KEYWORD_EXTRACTION_PROMPT = PromptTemplate.from_template("""
 1. 질문의 핵심 내용을 가장 잘 나타내는 질문 1개를 추출하세요.
 2. 질문은 간략하게 작성하세요.
 3. 질문은 한국어로 작성하세요.
+4. 출력은 부가 설명 없이 최종 '질문' 한 문장만 출력하세요
 
-[출력 형식]
-질문1
 """)
 
 

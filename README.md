@@ -1,9 +1,73 @@
 # 🚗 Vehicle Manual RAG Chatbot
 
-차량 사용 매뉴얼(PDF)을 파싱하여 임베딩 기반 RAG(Retrieval-Augmented Generation)를 구성하고,  
-이를 기반으로 차량 사용 관련 질의에 응답하는 챗봇 PoC 프로젝트입니다.
+> **차량 매뉴얼을 AI가 읽고, 사용자의 질문에 정확하게 답변하는 RAG 기반 인텔리전트 챗봇 서비스입니다.**
 
-> **현재 상태**: 초기 개발 단계 (Backend 클래스 기반 비동기(Async) DI ️아키텍처 구축 완료, SSE 스트리밍 챗봇 엔드포인트 적용 완료, RAG 검색 연동 대기 중 - Mock Context 적용)
+> **현재 상태**: ✅ RAG 파이프라인 완성 (Inference Server를 Hugging Face Spaces에 MSA로 분리 배포 완료, 하이브리드 벡터+FTS 검색 연동 완료, SSE 스트리밍 챗봇 엔드포인트 운영 중)
+
+---
+
+## 🎯 서비스 소개 및 목적
+
+### 해결하는 문제 (Problem Statement)
+
+차량을 구매하고 나서 실제로 사용자 매뉴얼을 처음부터 끝까지 읽는 사람은 거의 없습니다.
+"에어컨 필터는 어떻게 교체하지?", "이 경고등은 무슨 뜻이지?" 라는 질문이 생겼을 때,
+두꺼운 PDF를 뒤지거나 서비스센터에 전화하는 방법은 **너무 불편하고 비효율적**입니다.
+
+**Vehicle Manual RAG Chatbot**은 이 문제를 완벽하게 해결합니다.
+
+### 핵심 기능 (Key Features)
+
+| 기능 | 설명 |
+|------|------|
+| 🤖 **AI 매뉴얼 검색** | 사용자의 자연어 질문을 AI가 의미적으로 해석하여 매뉴얼에서 가장 관련 있는 내용을 정밀하게 찾아냅니다. |
+| ⚡ **실시간 스트리밍 응답** | LLM이 답변을 생성하는 즉시 토큰 단위로 화면에 스트리밍되어, 기다리는 답답함 없이 ChatGPT와 같은 UX를 제공합니다. |
+| 🚗 **차종별 개인화 검색** | 현대, 기아 등 브랜드 → 라인업 → 특정 모델(아이오닉5, 투싼 등)을 선택하면 **해당 차종 매뉴얼에서만** 답변을 찾습니다. |
+| 🔬 **하이브리드 RAG 검색** | 의미 기반(Vector Semantic Search)과 키워드 일치(Full-Text Search)를 **수학적으로 혼합**하여 어떤 질문에도 정확도 높은 문서를 검색합니다. |
+| 🧩 **MSA 마이크로서비스 아키텍처** | 무거운 AI 추론(임베딩)을 독립 서버로 분리하여, 메인 서버는 가볍고 빠르게 유지하면서 각 서비스를 독립적으로 확장 가능합니다. |
+
+---
+
+## 🗺️ 서비스 시나리오 (User Story)
+
+```
+[사용자]
+  "내 투싼 하이브리드 스마트키 배터리 방전됐는데 어떻게 교체하지?"
+  
+      ↓ 차량 선택 (현대 → 투싼 → 2024 하이브리드)
+      ↓ 자연어 질문 입력
+  
+[AI 챗봇] (실시간 스트리밍으로 답변 시작)
+  "투싼 하이브리드의 스마트키 배터리 교체 방법을 안내드립니다.
+   1단계: 스마트키 뒷면의 슬라이드 버튼을 당겨 보조 키를 분리합니다.
+   2단계: 동전 등을 이용해 스마트키 케이스를 분리합니다.
+   3단계: 기존 CR2032 배터리를 제거하고 동일 규격 신품으로 교체합니다.
+   ..."
+```
+
+---
+
+## ⚙️ 시스템 동작 흐름 (System Architecture Flow)
+
+```
+[1단계: 차량 선택]
+사용자 → 브랜드/라인업/모델 API 호출 → Supabase DB에서 목록 조회 → 드롭다운 UI 렌더링
+
+[2단계: 질문 입력 및 키워드 추출]
+사용자 질문 입력 → LLM (GPT / Gemini) → 질문의 핵심 의도를 '정제된 질문 1문장'으로 추출
+
+[3단계: 의미 기반 벡터화 (S2S 통신)]
+추출된 질문 → Hugging Face (Inference Server) → e5-large 모델로 1024차원 벡터 변환
+
+[4단계: 하이브리드 검색]
+생성된 벡터 + 원본 키워드 → Supabase RPC 함수 호출
+→ 벡터 유사도(Cosine, 70%) + 키워드 일치(FTS, 30%) 점수 혼합 → Top-K 문서 조각 반환
+
+[5단계: RAG 응답 생성 (실시간 스트리밍)]
+검색된 문서 → LLM Context로 주입 → LangChain LCEL 파이프라인 실행
+→ 생성되는 토큰을 SSE(Server-Sent Events)로 브라우저에 실시간 전송
+→ 사용자 화면에 답변이 실시간으로 타이핑되듯 표시됨
+```
 
 ---
 
@@ -25,27 +89,40 @@
 ```
 vehicle-manual-bot-LLM-RAG/
 ├── .github/workflows/          # CI/CD 파이프라인 (backend-ci.yaml)
+├── inference_server/           # 🆕 독립 임베딩 추론 서버 (Hugging Face Spaces 배포)
+│   ├── main.py                 # FastAPI 임베딩 엔드포인트 (SentenceTransformer e5-large)
+│   ├── Dockerfile              # CPU 최적화 컨테이너 빌드 파일
+│   ├── requirements.txt        # 추론 서버 전용 의존성
+│   └── README.md               # 추론 서버 가이드 및 HF Spaces 배포 방법
 ├── backend/
 │   ├── app/
 │   │   ├── api/
-│   │   │   ├── endpoints/      # 라우터 (health.py, chat.py)
+│   │   │   ├── endpoints/      # 라우터
+│   │   │   │   ├── health.py   # 헬스체크 엔드포인트
+│   │   │   │   ├── chat.py     # 챗봇 SSE 스트리밍 엔드포인트
+│   │   │   │   └── manual.py   # 🆕 차량 브랜드/라인업/모델 조회 엔드포인트
 │   │   │   └── routes.py       # 라우터 통합 등록
 │   │   ├── base/               # 공통 기반 모듈
 │   │   │   ├── exceptions.py   # 전역 예외 처리 핸들러
 │   │   │   ├── logger.py       # 로깅 설정 (TimedRotatingFileHandler)
 │   │   │   └── middleware.py   # 요청/응답 로깅 미들웨어
 │   │   ├── core/               # 핵심 설정
-│   │   │   ├── config.py       # 환경 변수 관리 (pydantic-settings)
+│   │   │   ├── config.py       # 환경 변수 관리 (pydantic-settings, HF_TOKEN 포함)
 │   │   │   ├── database.py     # Supabase 클라이언트 생성
 │   │   │   └── dependencies.py # FastAPI 의존성 주입 (DI)
+│   │   ├── prompts/            # LLM 프롬프트 템플릿 분리 관리
+│   │   │   └── chat_prompts.py # 키워드 추출 / RAG 응답 생성 프롬프트
 │   │   ├── repositories/       # DB 통신 전담 계층
-│   │   │   └── healthz_repository.py
+│   │   │   ├── healthz_repository.py
+│   │   │   └── manual_repository.py  # 🆕 브랜드/라인업/모델/RAG 하이브리드 검색
 │   │   ├── schemas/            # Pydantic 데이터 모델 (Request/Response)
 │   │   │   ├── response.py     # 통합 응답 규격 (CommonResponse)
 │   │   │   ├── healthz.py      # Health Check 요청 스키마
-│   │   │   └── chat.py         # Chat 요청/응답 스키마 (LLM 모델 설정 포함)
+│   │   │   ├── chat.py         # Chat 요청/응답 스키마 (LLM 모델 설정 포함)
+│   │   │   └── manual.py       # 🆕 Manual 요청 스키마 (Lineup/Model 필터)
 │   │   ├── services/           # 비즈니스 로직 계층
-│   │   │   ├── chat_service.py # 멀티 모델 (OpenAI, Gemini) 통신 및 Mock RAG 로직
+│   │   │   ├── chat_service.py # RAG 파이프라인 + SSE 스트리밍 (httpx S2S 임베딩 호출)
+│   │   │   ├── manual_service.py    # 🆕 차량 정보 비즈니스 로직 + 예외 처리
 │   │   │   └── healthz_service.py
 │   │   └── main.py             # FastAPI App 팩토리 (lifespan 관리)
 │   ├── docs/                   # 차량 매뉴얼 PDF 원본
@@ -78,6 +155,14 @@ Client Request
     ↓
 Client Response ← CommonResponse 규격 또는 실시간 StreamingResponse(SSE) 반환
 ```
+### 🧩 마이크로서비스 (MSA) 분리: Inference Server (추론 서버)
+메인 웹 API 서버의 확장성과 가용성을 극대화하기 위해, 무거운 AI 연산을 전담하는 별도의 **추론 전용 마이크로서비스(`inference_server/`)**를 분리하여 오케스트레이션합니다.
+
+* **관심사 분리 (SRP)**: 2GB가 넘는 대용량 PyTorch `SentenceTransformer` (e5-large) 모델의 로딩과 벡터 연산을 추론 서버가 100% 전담합니다.
+* **S2S (Server-to-Server) 통신**: 메인 백엔드(`chat_service.py`)가 내부망에서 `httpx`를 이용해 추론 서버와 안전하게 비동기 통신합니다. 웹 브라우저의 직접 호출이 차단되므로 **CORS 에러로부터 완전히 자유롭고, 악의적인 외부 공격으로부터 안전**합니다.
+* **무료 인프라 극대화 (Hugging Face Spaces)**: 
+  * 메모리를 독식하는 추론 엔진은 RAM 16GB를 무료로 제공하는 **Hugging Face Spaces (Docker)** 환경에 격리하여 배포합니다.
+  * 추론 엔진이 떨어져 나간 메인 백엔드 서버는 사이즈가 극적으로 가벼워져, 향후 Vercel이나 Render 같은 무료 클라우드에서도 무한에 가까운 API 워커(Worker) 스케일링이 가능합니다.
 
 ### 비동기(Async) 의존성 주입 (Class-based DI)
 엔터프라이즈 환경에서의 테스트 용이성(Mocking)과 코드 유지보수성을 위해 FastAPI의 강력한 **의존성 주입(Dependency Injection)** 시스템을 활용합니다.
@@ -172,6 +257,9 @@ uvicorn app.main:app --host 0.0.0.0 --port 8009 --reload
 | `POST` | `/api/v1/chat` | 챗봇 질의 (Raw SDK 기반 멀티 모델 단건 응답) |
 | `POST` | `/api/v1/chat/langchain` | 챗봇 질의 (LangChain LCEL 기반 단일 파이프라인 단건 응답) |
 | `POST` | `/api/v1/chat/stream` | 실시간 챗봇 질의 (LangChain LCEL 기반 SSE 스트리밍 응답) |
+| `GET` | `/api/v1/manual/brands` | 🆕 차량 브랜드 목록 조회 |
+| `GET` | `/api/v1/manual/lineups?brand_id=HD` | 🆕 브랜드별 라인업 목록 조회 |
+| `GET` | `/api/v1/manual/models?lineup_id=LX3` | 🆕 라인업별 차량 모델 목록 조회 |
 
 ---
 
