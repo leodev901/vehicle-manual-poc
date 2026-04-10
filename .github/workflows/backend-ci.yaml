@@ -60,7 +60,7 @@ jobs:
           echo "TAG=$TAG"               >> $GITHUB_ENV
 
           # ── values.yaml 복사 & 시크릿 치환 ─────────────────
-          cp backend/helm/$DEPLOY_ENV-values.yaml backend/helm/values.yaml
+          # cp backend/helm/$DEPLOY_ENV-values.yaml backend/helm/values.yaml
           FILE="backend/helm/values.yaml"
 
           # github-secret-… 문자열을 실제 시크릿 값으로 교체
