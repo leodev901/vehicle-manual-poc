@@ -2,7 +2,7 @@
 
 > **차량 매뉴얼을 AI가 읽고, 사용자의 질문에 정확하게 답변하는 RAG 기반 인텔리전트 챗봇 서비스입니다.**
 
-> **현재 상태**: ✅ RAG 파이프라인 완성 (Inference Server를 Hugging Face Spaces에 MSA로 분리 배포 완료, 하이브리드 벡터+FTS 검색 연동 완료, SSE 스트리밍 챗봇 엔드포인트 운영 중)
+> **현재 상태**: ✅ RAG 파이프라인 완성 (Inference Server를 Hugging Face Spaces에 MSA로 분리 배포 완료, 하이브리드 벡터+FTS 검색 연동 완료, SSE 스트리밍 챗봇 엔드포인트 운영 중) | ✅ 프론트엔드 완성 (Next.js App Router 기반 모바일-퍼스트 챗봇 UI, SSE 스트리밍 연동, 차량 Cascade 선택 위젯 구현)
 
 ---
 
@@ -78,7 +78,7 @@
 | **Backend** | FastAPI, Uvicorn, Pydantic |
 | **Database** | Supabase (PostgreSQL + pgvector) |
 | **LLM / RAG** | LangChain, OpenAI, Google GenAI (멀티 모델 지원) |
-| **Frontend** | HTML, CSS, JS (기본 구조 작업 진행) |
+| **Frontend** | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, lucide-react |
 | **Infra** | Docker, Helm, GitHub Actions CI |
 | **Data Pipeline** | PyMuPDF, Sentence-Transformers, Pandas |
 
@@ -131,7 +131,15 @@ vehicle-manual-bot-LLM-RAG/
 │   ├── requirements.txt        # Python 의존성 목록
 │   └── .env.example            # 환경 변수 템플릿
 ├── frontend/
-│   ├── app/                    # 프론트엔드 HTML 파일 (index.html 기초 뼈대)
+│   ├── src/
+│   │   ├── app/                # Next.js App Router (layout.tsx, page.tsx, globals.css)
+│   │   ├── components/         # UI 컴포넌트 (TopAppBar, VehicleSelectorChip, ChatInterface, ChatInput)
+│   │   ├── lib/                # API 호출 함수 (SSE 스트리밍 포함)
+│   │   ├── types/              # TypeScript 타입 정의 (백엔드 Pydantic 스키마와 매핑)
+│   │   └── instrumentation.ts  # Node.js 서버 사이드 초기화 훅
+│   ├── next.config.js          # Next.js 설정 (백엔드 API 프록시 rewrites)
+│   ├── tailwind.config.js      # Tailwind CSS (Mint Breeze 디자인 시스템 토큰)
+│   ├── package.json
 │   └── helm/                   # Frontend Helm Chart
 ├── mocktest/                   # 데이터 파이프라인 스크립트 (PDF 파싱 → 임베딩 → DB 저장)
 └── requirements.txt            # 데이터 파이프라인 의존성

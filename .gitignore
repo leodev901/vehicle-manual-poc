@@ -54,10 +54,19 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# 빌드 결과물
-frontend/app/dist/
-frontend/app/build/
-frontend/app/.next/
+# 빌드 결과물 & Next.js 캐시
+frontend/.next/
+frontend/out/
+frontend/dist/
+frontend/build/
+
+# Next.js 자동 생성 파일
+frontend/next-env.d.ts
+
+# TypeScript 빌드 캐시
+frontend/tsconfig.tsbuildinfo
+
+# Turbopack
 .turbo/
 
 # ============================================

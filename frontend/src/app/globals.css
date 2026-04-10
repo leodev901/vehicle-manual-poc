@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;600;700;800&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * 기본 레이어: 전역 타이포그래피 & 스크롤바 숨기기
+ * ────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  html, body {
+    @apply bg-background text-on-surface antialiased;
+    font-family: 'Inter', sans-serif;
+    /* iOS Safari 이중 탭 확대 방지 */
+    touch-action: manipulation;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Manrope', sans-serif;
+  }
+
+  /* 채팅 스크롤 영역의 스크롤바를 숨겨 앱처럼 보이게 */
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * 컴포넌트 레이어: 재사용 가능한 유틸리티 클래스
+ * ────────────────────────────────────────────────────────────────────────── */
+@layer components {
+  /* 
+   * Glassmorphism 효과
+   * DESIGN.md "Glass & Gradient Rule": surface 색상 80% 불투명도 + backdrop-blur
+   */
+  .glass {
+    background: rgba(248, 249, 250, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* 
+   * 시그니처 그라디언트
+   * DESIGN.md "Signature Textures": primary → primary-container (135deg)
+   */
+  .signature-gradient {
+    background: linear-gradient(135deg, #006b5b 0%, #4fdbc0 100%);
+  }
+
+  /* 
+   * AI 메시지 버블: 왼쪽 아래 모서리만 뾰족하게
+   */
+  .ai-bubble {
+    border-radius: 1.5rem 1.5rem 1.5rem 0.25rem;
+  }
+
+  /* 
+   * 유저 메시지 버블: 오른쪽 아래 모서리만 뾰족하게
+   */
+  .user-bubble {
+    border-radius: 1.5rem 1.5rem 0.25rem 1.5rem;
+  }
+
+  /* 스트리밍 로딩 점의 지연 애니메이션 */
+  .dot-delay-1 { animation-delay: 0s; }
+  .dot-delay-2 { animation-delay: 0.2s; }
+  .dot-delay-3 { animation-delay: 0.4s; }
+}

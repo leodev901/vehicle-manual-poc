@@ -6,7 +6,7 @@ from app.services.manual_service import ManualService
 
 
 
-api_router = APIRouter(tags=["manual"])
+api_router = APIRouter(prefix="/api/v1/manual",tags=["manual"])
 
 @api_router.get("/brands")
 async def list_brands(

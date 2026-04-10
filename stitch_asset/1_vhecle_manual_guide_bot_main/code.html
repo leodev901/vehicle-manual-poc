@@ -1,13 +1,19 @@
 <!DOCTYPE html>
 
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Auto-Guide AI | Digital Curator</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Auto-Guide AI | Digital Curator</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
             theme: {
@@ -76,124 +82,157 @@
             }
         }
     </script>
-<style>
+    <style>
         .glass {
             background: rgba(248, 249, 250, 0.8);
             backdrop-filter: blur(20px);
         }
+
         .message-shadow {
             box-shadow: 0 4px 20px rgba(25, 28, 29, 0.03);
         }
+
         .main-shadow {
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
         }
+
         .signature-gradient {
             background: linear-gradient(135deg, #006b5b 0%, #4fdbc0 100%);
         }
     </style>
 </head>
+
 <body class="bg-[#f0f4f3] font-body text-on-surface antialiased">
-<!-- Desktop Background & Mobile Mockup Container -->
-<main class="min-h-screen flex items-center justify-center p-4 md:p-8">
-<!-- Main Content Canvas (The Center Console) -->
-<div class="relative w-full max-w-[450px] h-[850px] bg-white rounded-xl overflow-hidden flex flex-col main-shadow border border-outline-variant/10">
-<!-- TopAppBar -->
-<header class="absolute top-0 w-full z-50 bg-surface/80 backdrop-blur-xl dark:bg-slate-900/80 shadow-sm dark:shadow-none flex justify-between items-center px-6 py-4 transition-all">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-teal-600 dark:text-teal-400 text-2xl" data-weight="fill">directions_car</span>
-<span class="font-['Manrope'] tracking-tight font-bold text-lg text-teal-700 dark:text-teal-300">Auto-Guide AI</span>
-</div>
-<div class="flex items-center gap-3">
-<!-- LLM Toggle -->
-<div class="bg-surface-container-high p-1 rounded-full flex gap-1 text-[10px] font-bold">
-<button class="px-2 py-1 bg-white rounded-full shadow-sm text-primary">GPT-4o</button>
-<button class="px-2 py-1 text-on-surface-variant opacity-60">GEMINI</button>
-</div>
-<span class="material-symbols-outlined text-slate-500 hover:opacity-80 transition-opacity cursor-pointer">settings</span>
-</div>
-</header>
-<!-- Content Area -->
-<div class="flex-1 mt-16 overflow-y-auto bg-surface pb-32">
-<!-- Vehicle Selector Chip -->
-<div class="px-6 pt-6">
-<button class="group flex items-center gap-2 px-5 py-3 bg-secondary-container text-on-secondary-container rounded-full text-sm font-semibold shadow-sm hover:shadow-md transition-all active:scale-95">
-<span class="material-symbols-outlined text-lg">directions_car</span>
-<span>Currently: Hyundai Tucson Hybrid 2024</span>
-<span class="material-symbols-outlined text-lg group-hover:translate-y-0.5 transition-transform">expand_more</span>
-</button>
-</div>
-<!-- Empty State -->
-<div class="px-8 mt-20 flex flex-col items-center text-center">
-<div class="w-20 h-20 bg-primary-container/20 rounded-full flex items-center justify-center mb-6">
-<span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
-</div>
-<h1 class="font-headline text-3xl font-extrabold text-on-surface tracking-tight mb-4 leading-tight">
+    <!-- Desktop Background & Mobile Mockup Container -->
+    <main class="min-h-screen flex items-center justify-center p-4 md:p-8">
+        <!-- Main Content Canvas (The Center Console) -->
+        <div
+            class="relative w-full max-w-[450px] h-[850px] bg-white rounded-xl overflow-hidden flex flex-col main-shadow border border-outline-variant/10">
+            <!-- TopAppBar -->
+            <header
+                class="absolute top-0 w-full z-50 bg-surface/80 backdrop-blur-xl dark:bg-slate-900/80 shadow-sm dark:shadow-none flex justify-between items-center px-6 py-4 transition-all">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-teal-600 dark:text-teal-400 text-2xl"
+                        data-weight="fill">directions_car</span>
+                    <span
+                        class="font-['Manrope'] tracking-tight font-bold text-lg text-teal-700 dark:text-teal-300">Auto-Guide
+                        AI</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <!-- LLM Toggle -->
+                    <div class="bg-surface-container-high p-1 rounded-full flex gap-1 text-[10px] font-bold">
+                        <button class="px-2 py-1 bg-white rounded-full shadow-sm text-primary">GPT-5</button>
+                        <button class="px-2 py-1 text-on-surface-variant opacity-60">GEMINI</button>
+                    </div>
+                    <span
+                        class="material-symbols-outlined text-slate-500 hover:opacity-80 transition-opacity cursor-pointer">settings</span>
+                </div>
+            </header>
+            <!-- Content Area -->
+            <div class="flex-1 mt-16 overflow-y-auto bg-surface pb-32">
+                <!-- Vehicle Selector Chip -->
+                <div class="px-6 pt-6">
+                    <button
+                        class="group flex items-center gap-2 px-5 py-3 bg-secondary-container text-on-secondary-container rounded-full text-sm font-semibold shadow-sm hover:shadow-md transition-all active:scale-95">
+                        <span class="material-symbols-outlined text-lg">directions_car</span>
+                        <span>Currently: Hyundai Tucson Hybrid 2024</span>
+                        <span
+                            class="material-symbols-outlined text-lg group-hover:translate-y-0.5 transition-transform">expand_more</span>
+                    </button>
+                </div>
+                <!-- Empty State -->
+                <div class="px-8 mt-20 flex flex-col items-center text-center">
+                    <div class="w-20 h-20 bg-primary-container/20 rounded-full flex items-center justify-center mb-6">
+                        <span class="material-symbols-outlined text-primary text-4xl"
+                            style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                    </div>
+                    <h1 class="font-headline text-3xl font-extrabold text-on-surface tracking-tight mb-4 leading-tight">
                         How can I help you with your <span class="text-primary">Tucson</span> today?
                     </h1>
-<p class="text-on-surface-variant font-body text-sm mb-12 leading-relaxed">
-                        I have access to the full digital manual. Ask me anything from warning lights to maintenance schedules.
+                    <p class="text-on-surface-variant font-body text-sm mb-12 leading-relaxed">
+                        I have access to the full digital manual. Ask me anything from warning lights to maintenance
+                        schedules.
                     </p>
-<!-- Quick Action Chips -->
-<div class="grid grid-cols-2 gap-3 w-full">
-<button class="bg-white border border-outline-variant/20 px-4 py-4 rounded-xl text-xs font-semibold text-left hover:bg-surface-container-low transition-colors flex flex-col gap-2 shadow-sm">
-<span class="material-symbols-outlined text-primary text-xl">battery_charging_full</span>
+                    <!-- Quick Action Chips -->
+                    <div class="grid grid-cols-2 gap-3 w-full">
+                        <button
+                            class="bg-white border border-outline-variant/20 px-4 py-4 rounded-xl text-xs font-semibold text-left hover:bg-surface-container-low transition-colors flex flex-col gap-2 shadow-sm">
+                            <span class="material-symbols-outlined text-primary text-xl">battery_charging_full</span>
                             Smart Key Battery
                         </button>
-<button class="bg-white border border-outline-variant/20 px-4 py-4 rounded-xl text-xs font-semibold text-left hover:bg-surface-container-low transition-colors flex flex-col gap-2 shadow-sm">
-<span class="material-symbols-outlined text-primary text-xl">air_purifier_gen</span>
+                        <button
+                            class="bg-white border border-outline-variant/20 px-4 py-4 rounded-xl text-xs font-semibold text-left hover:bg-surface-container-low transition-colors flex flex-col gap-2 shadow-sm">
+                            <span class="material-symbols-outlined text-primary text-xl">air_purifier_gen</span>
                             Air Filter Change
                         </button>
-<button class="bg-white border border-outline-variant/20 px-4 py-4 rounded-xl text-xs font-semibold text-left hover:bg-surface-container-low transition-colors flex flex-col gap-2 shadow-sm">
-<span class="material-symbols-outlined text-primary text-xl">warning</span>
+                        <button
+                            class="bg-white border border-outline-variant/20 px-4 py-4 rounded-xl text-xs font-semibold text-left hover:bg-surface-container-low transition-colors flex flex-col gap-2 shadow-sm">
+                            <span class="material-symbols-outlined text-primary text-xl">warning</span>
                             Warning Lights
                         </button>
-<button class="bg-white border border-outline-variant/20 px-4 py-4 rounded-xl text-xs font-semibold text-left hover:bg-surface-container-low transition-colors flex flex-col gap-2 shadow-sm">
-<span class="material-symbols-outlined text-primary text-xl">bluetooth</span>
+                        <button
+                            class="bg-white border border-outline-variant/20 px-4 py-4 rounded-xl text-xs font-semibold text-left hover:bg-surface-container-low transition-colors flex flex-col gap-2 shadow-sm">
+                            <span class="material-symbols-outlined text-primary text-xl">bluetooth</span>
                             Bluetooth Pairing
                         </button>
-</div>
-</div>
-<!-- Featured Graphic -->
-<div class="px-6 mt-12">
-<div class="relative w-full h-40 rounded-xl overflow-hidden shadow-sm group">
-<img alt="Interior of a modern SUV" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="luxury car interior with digital dashboard glowing subtly in soft morning light modern automotive design" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC214ZdeqyKHYyue3-4SHpwhcP-g7TnzbWnfH4mGxgCNn5r6tm3yarKic9qCTJLnC2XaGvQ189_ukyi1tBGuyVPWBno_ozVqYuI1f6ZhpufaNiPRvkCYcjb7kgrCcZ28xrbiEa-FWHMhRTEXL6e9LCbRekKAPXb4-NY9yZaPVHjHn9h6DXTdaAnnH70k74D-hZG7oTLjIcHx_F9N3tz-s0w4ifa7SEamY3VjBv20K0HTjMORHRVkUIq2IzFuDBBygZpSqt_UsKY6ewz"/>
-<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
-<p class="text-white text-xs font-medium">Explore visual guides for your dashboard console.</p>
-</div>
-</div>
-</div>
-</div>
-<!-- Bottom Chat Input (Floating Pill) -->
-<div class="absolute bottom-24 left-1/2 -translate-x-1/2 w-full px-6 z-50">
-<div class="flex items-center gap-2 p-2 bg-white/80 backdrop-blur-2xl rounded-full shadow-lg border border-outline-variant/10">
-<button class="p-3 text-on-surface-variant hover:text-primary transition-colors">
-<span class="material-symbols-outlined">attachment</span>
-</button>
-<input class="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium placeholder:text-slate-400" placeholder="Ask about maintenance, specs..." type="text"/>
-<button class="w-12 h-12 signature-gradient text-white rounded-full flex items-center justify-center hover:shadow-lg active:scale-90 transition-all duration-200">
-<span class="material-symbols-outlined font-bold">arrow_upward</span>
-</button>
-</div>
-</div>
-<!-- BottomNavBar -->
-<nav class="absolute bottom-0 left-0 w-full flex justify-around items-center px-4 pb-4 pt-2 bg-white/80 backdrop-blur-2xl shadow-[0_-10px_30px_rgba(0,0,0,0.04)] rounded-t-[3rem]">
-<div class="flex flex-col items-center bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-100 rounded-3xl px-6 py-2 scale-90 duration-200">
-<span class="material-symbols-outlined" data-weight="fill">forum</span>
-<span class="font-['Inter'] text-[10px] font-semibold uppercase tracking-wider">Chat</span>
-</div>
-<div class="flex flex-col items-center text-slate-400 dark:text-slate-500 px-6 py-2 hover:text-teal-500 transition-colors">
-<span class="material-symbols-outlined">tune</span>
-<span class="font-['Inter'] text-[10px] font-semibold uppercase tracking-wider">Specs</span>
-</div>
-<div class="flex flex-col items-center text-slate-400 dark:text-slate-500 px-6 py-2 hover:text-teal-500 transition-colors">
-<span class="material-symbols-outlined">warning</span>
-<span class="font-['Inter'] text-[10px] font-semibold uppercase tracking-wider">Alerts</span>
-</div>
-<div class="flex flex-col items-center text-slate-400 dark:text-slate-500 px-6 py-2 hover:text-teal-500 transition-colors">
-<span class="material-symbols-outlined">person</span>
-<span class="font-['Inter'] text-[10px] font-semibold uppercase tracking-wider">Settings</span>
-</div>
-</nav>
-</div>
-</main>
-</body></html>
+                    </div>
+                </div>
+                <!-- Featured Graphic -->
+                <div class="px-6 mt-12">
+                    <div class="relative w-full h-40 rounded-xl overflow-hidden shadow-sm group">
+                        <img alt="Interior of a modern SUV"
+                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                            data-alt="luxury car interior with digital dashboard glowing subtly in soft morning light modern automotive design"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuC214ZdeqyKHYyue3-4SHpwhcP-g7TnzbWnfH4mGxgCNn5r6tm3yarKic9qCTJLnC2XaGvQ189_ukyi1tBGuyVPWBno_ozVqYuI1f6ZhpufaNiPRvkCYcjb7kgrCcZ28xrbiEa-FWHMhRTEXL6e9LCbRekKAPXb4-NY9yZaPVHjHn9h6DXTdaAnnH70k74D-hZG7oTLjIcHx_F9N3tz-s0w4ifa7SEamY3VjBv20K0HTjMORHRVkUIq2IzFuDBBygZpSqt_UsKY6ewz" />
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
+                            <p class="text-white text-xs font-medium">Explore visual guides for your dashboard console.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Bottom Chat Input (Floating Pill) -->
+            <div class="absolute bottom-24 left-1/2 -translate-x-1/2 w-full px-6 z-50">
+                <div
+                    class="flex items-center gap-2 p-2 bg-white/80 backdrop-blur-2xl rounded-full shadow-lg border border-outline-variant/10">
+                    <button class="p-3 text-on-surface-variant hover:text-primary transition-colors">
+                        <span class="material-symbols-outlined">attachment</span>
+                    </button>
+                    <input
+                        class="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium placeholder:text-slate-400"
+                        placeholder="Ask about maintenance, specs..." type="text" />
+                    <button
+                        class="w-12 h-12 signature-gradient text-white rounded-full flex items-center justify-center hover:shadow-lg active:scale-90 transition-all duration-200">
+                        <span class="material-symbols-outlined font-bold">arrow_upward</span>
+                    </button>
+                </div>
+            </div>
+            <!-- BottomNavBar -->
+            <nav
+                class="absolute bottom-0 left-0 w-full flex justify-around items-center px-4 pb-4 pt-2 bg-white/80 backdrop-blur-2xl shadow-[0_-10px_30px_rgba(0,0,0,0.04)] rounded-t-[3rem]">
+                <div
+                    class="flex flex-col items-center bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-100 rounded-3xl px-6 py-2 scale-90 duration-200">
+                    <span class="material-symbols-outlined" data-weight="fill">forum</span>
+                    <span class="font-['Inter'] text-[10px] font-semibold uppercase tracking-wider">Chat</span>
+                </div>
+                <div
+                    class="flex flex-col items-center text-slate-400 dark:text-slate-500 px-6 py-2 hover:text-teal-500 transition-colors">
+                    <span class="material-symbols-outlined">tune</span>
+                    <span class="font-['Inter'] text-[10px] font-semibold uppercase tracking-wider">Specs</span>
+                </div>
+                <div
+                    class="flex flex-col items-center text-slate-400 dark:text-slate-500 px-6 py-2 hover:text-teal-500 transition-colors">
+                    <span class="material-symbols-outlined">warning</span>
+                    <span class="font-['Inter'] text-[10px] font-semibold uppercase tracking-wider">Alerts</span>
+                </div>
+                <div
+                    class="flex flex-col items-center text-slate-400 dark:text-slate-500 px-6 py-2 hover:text-teal-500 transition-colors">
+                    <span class="material-symbols-outlined">person</span>
+                    <span class="font-['Inter'] text-[10px] font-semibold uppercase tracking-wider">Settings</span>
+                </div>
+            </nav>
+        </div>
+    </main>
+</body>
+
+</html>
