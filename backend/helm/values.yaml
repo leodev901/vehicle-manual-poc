@@ -2,9 +2,9 @@
 # Deployment Configuration
 # =======================================
 image:
-  # repository: ghcr.io/<GITHUB_OWNER>/api-fastapi
+  # repository: ghcr.io/<GITHUB_OWNER>/<REPOSITORY_NAME>/backend
   # tag: "dev"
-  repository: ghcr.io/leodev901/vehicle-manual-bot/backend
+  repository: ghcr.io/leodev901/vehicle-manual-poc/backend
   tag: "latest"
   pullPolicy: Always
 containers:
