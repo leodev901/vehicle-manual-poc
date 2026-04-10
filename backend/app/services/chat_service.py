@@ -235,16 +235,18 @@ class ChatService:
             model_id=payload.model_id,
             query=keywords,
             query_vector=query_vector,
-            top_k=5
+            top_k=4
         )
         for i, item in enumerate(results):
             print(f"\n[{i+1}위] 📄 {item['heading']} (p.{item['page_num']})")
             # 본문이 너무 길면 200자까지만 보여주기
-            preview = item['content'][:500].replace("\n", " ") + "..."
+            preview = item['content'][:200].replace("\n", " ") + "..."
             print(f"   내용: {preview}")
 
         # 검색 결과에서 문서 텍스트만 추출
-        context = "\n\n".join([doc["content"] for doc in results])
+        context = "\n\n".join([f"[출처: {doc['heading']} (p.{doc['page_num']})]\n{doc['content']}" for doc in results])
+
+        print(f"context:\n {context}")
 
 
         #TODO: 최종 답변

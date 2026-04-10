@@ -1,0 +1,5 @@
+pymilvus
+sentence-transformers
+pymupdf
+pandas
+supabase
