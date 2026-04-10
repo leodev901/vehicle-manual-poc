@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Auto-Guide AI | Vehicle Selection</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;600;700;800&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-container": "#3e6d62",
+                      "on-primary-fixed-variant": "#005144",
+                      "tertiary-fixed": "#ffdcbb",
+                      "on-tertiary-fixed": "#2c1700",
+                      "surface-container-low": "#f3f4f5",
+                      "inverse-surface": "#2e3132",
+                      "surface-container-highest": "#e1e3e4",
+                      "secondary-container": "#bbeddf",
+                      "on-error-container": "#93000a",
+                      "primary-fixed-dim": "#50dcc1",
+                      "secondary-fixed": "#bbeddf",
+                      "on-background": "#191c1d",
+                      "surface-container-high": "#e7e8e9",
+                      "on-primary-fixed": "#00201a",
+                      "surface-container-lowest": "#ffffff",
+                      "background": "#f8f9fa",
+                      "primary-container": "#4fdbc0",
+                      "on-tertiary-container": "#774700",
+                      "tertiary": "#885204",
+                      "on-surface": "#191c1d",
+                      "inverse-primary": "#50dcc1",
+                      "tertiary-fixed-dim": "#ffb869",
+                      "on-primary": "#ffffff",
+                      "secondary-fixed-dim": "#a0d0c3",
+                      "surface-variant": "#e1e3e4",
+                      "on-secondary-fixed-variant": "#1f4f45",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-container": "#ffb766",
+                      "on-error": "#ffffff",
+                      "on-tertiary-fixed-variant": "#673d00",
+                      "inverse-on-surface": "#f0f1f2",
+                      "outline-variant": "#bbcac4",
+                      "surface-dim": "#d9dadb",
+                      "on-surface-variant": "#3c4a46",
+                      "on-secondary": "#ffffff",
+                      "primary-fixed": "#71f9dd",
+                      "on-primary-container": "#005d4f",
+                      "primary": "#006b5b",
+                      "error-container": "#ffdad6",
+                      "surface": "#f8f9fa",
+                      "on-secondary-fixed": "#00201a",
+                      "secondary": "#38675c",
+                      "surface-tint": "#006b5b",
+                      "surface-bright": "#f8f9fa",
+                      "error": "#ba1a1a",
+                      "outline": "#6c7a75",
+                      "surface-container": "#edeeef"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Manrope"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            },
+          }
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .tonal-transition-no-border {
+            border: none !important;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen">
+<!-- Top Navigation -->
+<header class="fixed top-0 left-0 w-full z-50 bg-surface/80 backdrop-blur-xl shadow-sm">
+<div class="flex justify-between items-center px-6 py-4 max-w-lg mx-auto w-full">
+<div class="text-xl font-extrabold text-teal-700 dark:text-teal-300 tracking-tight font-['Manrope']">Auto-Guide AI</div>
+<div class="flex gap-4 items-center">
+<span class="material-symbols-outlined text-teal-600 cursor-pointer hover:opacity-80 transition-opacity" data-icon="directions_car">directions_car</span>
+<span class="material-symbols-outlined text-slate-500 cursor-pointer hover:opacity-80 transition-opacity" data-icon="settings">settings</span>
+</div>
+</div>
+</header>
+<!-- Main Canvas - Centered Column -->
+<main class="max-w-lg mx-auto pt-24 pb-32 px-6 min-h-screen flex flex-col">
+<!-- Background/Previous Chat State (Dimmed) -->
+<div class="opacity-30 pointer-events-none select-none flex flex-col gap-6 mb-8">
+<div class="flex items-start gap-3">
+<div class="bg-surface-container-highest rounded-2xl p-4 max-w-[80%] rounded-bl-sm">
+<p class="text-sm leading-relaxed">How do I activate the regenerative braking settings on my Tucson?</p>
+</div>
+</div>
+</div>
+<!-- Vehicle Selection Interface -->
+<section class="flex-grow">
+<div class="mb-8">
+<h2 class="text-2xl font-bold tracking-tight text-on-surface mb-2">Vehicle Context</h2>
+<p class="text-sm text-on-surface-variant font-medium">Select your vehicle for personalized AI guidance.</p>
+</div>
+<div class="space-y-6">
+<!-- Step 1: Brand -->
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<span class="text-xs font-bold uppercase tracking-widest text-primary/60">01 Brand</span>
+<span class="text-xs font-semibold text-primary cursor-pointer">Change</span>
+</div>
+<div class="flex flex-wrap gap-2">
+<button class="px-6 py-3 bg-primary text-on-primary rounded-full text-sm font-semibold flex items-center gap-2 shadow-lg shadow-primary/20">
+                            Hyundai
+                            <span class="material-symbols-outlined text-sm" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</button>
+<button class="px-6 py-3 bg-surface-container-low hover:bg-surface-container-high transition-colors text-on-surface rounded-full text-sm font-medium">Kia</button>
+<button class="px-6 py-3 bg-surface-container-low hover:bg-surface-container-high transition-colors text-on-surface rounded-full text-sm font-medium">Genesis</button>
+</div>
+</div>
+<!-- Step 2: Lineup -->
+<div class="space-y-4 pt-4">
+<div class="flex justify-between items-center">
+<span class="text-xs font-bold uppercase tracking-widest text-primary/60">02 Lineup</span>
+</div>
+<div class="flex flex-wrap gap-2">
+<button class="px-6 py-3 bg-primary text-on-primary rounded-full text-sm font-semibold flex items-center gap-2 shadow-lg shadow-primary/20">
+                            SUV
+                            <span class="material-symbols-outlined text-sm" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</button>
+<button class="px-6 py-3 bg-surface-container-low hover:bg-surface-container-high transition-colors text-on-surface rounded-full text-sm font-medium">Sedan</button>
+<button class="px-6 py-3 bg-surface-container-low hover:bg-surface-container-high transition-colors text-on-surface rounded-full text-sm font-medium">EV</button>
+<button class="px-6 py-3 bg-surface-container-low hover:bg-surface-container-high transition-colors text-on-surface rounded-full text-sm font-medium">Performance</button>
+</div>
+</div>
+<!-- Step 3: Model -->
+<div class="space-y-4 pt-4">
+<div class="flex justify-between items-center">
+<span class="text-xs font-bold uppercase tracking-widest text-primary/60">03 Model</span>
+</div>
+<div class="grid grid-cols-1 gap-3">
+<div class="relative group cursor-pointer overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow">
+<div class="h-48 w-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCWHALiP6zVsSsX6NTM36jN9lsIE4ACXzNKij_5yf-SFElwwAWY0fPwGcKAXjYLYVhGnEeA-qqL794G6bJLPrDN2_CeDPdDsRYzQQAiwRfSYH_LZ-2yaM-9euIrdHrJHzy6S0rD8gHhM8Rj24tRWiRhBbsUtDCZZOg_Gk1L7cCijVB94_2Add8jKhjYHi2x89bZmtajFdcgScP9OBJMQxW_ohc9ogTpgH5K0AitB4rlN-T9ZWWLEsiv9E7Bdfwf2r2IY01wz-gt6w4h');"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-primary/90 to-transparent flex flex-col justify-end p-6">
+<h3 class="text-on-primary text-lg font-bold">Tucson Hybrid 2024</h3>
+<p class="text-on-primary/80 text-xs font-medium">Current Selection</p>
+</div>
+<div class="absolute top-4 right-4 bg-on-primary rounded-full p-2 text-primary">
+<span class="material-symbols-outlined" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+<!-- Secondary Model Options -->
+<div class="grid grid-cols-2 gap-3">
+<button class="p-4 bg-surface-container-low rounded-xl text-left hover:bg-surface-container-high transition-colors">
+<span class="block text-sm font-bold">Santa Fe</span>
+<span class="block text-[10px] uppercase tracking-tighter opacity-60">Full Size SUV</span>
+</button>
+<button class="p-4 bg-surface-container-low rounded-xl text-left hover:bg-surface-container-high transition-colors">
+<span class="block text-sm font-bold">Palisade</span>
+<span class="block text-[10px] uppercase tracking-tighter opacity-60">Luxury SUV</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-12 mb-8">
+<button class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold py-5 rounded-full shadow-xl shadow-primary/25 active:scale-95 transition-all">
+                    Confirm Vehicle &amp; Update AI
+                </button>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Shell -->
+<div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg z-50 px-4 pb-8 pt-4">
+<div class="bg-white/80 backdrop-blur-2xl rounded-t-[3rem] shadow-[0_-10px_30px_rgba(0,0,0,0.04)] p-4 opacity-50 grayscale transition-all">
+<div class="relative w-full">
+<div class="bg-surface-container-lowest rounded-full px-6 py-4 flex items-center justify-between shadow-sm">
+<span class="text-slate-400 text-sm font-medium">Ask Auto-Guide AI anything...</span>
+<div class="bg-primary/20 rounded-full p-2 text-primary">
+<span class="material-symbols-outlined" data-icon="send">send</span>
+</div>
+</div>
+</div>
+<nav class="flex justify-around items-center mt-6">
+<div class="flex flex-col items-center bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-100 rounded-3xl px-6 py-2">
+<span class="material-symbols-outlined" data-icon="forum" style="font-variation-settings: 'FILL' 1;">forum</span>
+<span class="font-['Inter'] text-[10px] font-semibold uppercase tracking-wider mt-1">Chat</span>
+</div>
+<div class="flex flex-col items-center text-slate-400 px-6 py-2">
+<span class="material-symbols-outlined" data-icon="tune">tune</span>
+<span class="font-['Inter'] text-[10px] font-semibold uppercase tracking-wider mt-1">Specs</span>
+</div>
+<div class="flex flex-col items-center text-slate-400 px-6 py-2">
+<span class="material-symbols-outlined" data-icon="warning">warning</span>
+<span class="font-['Inter'] text-[10px] font-semibold uppercase tracking-wider mt-1">Alerts</span>
+</div>
+<div class="flex flex-col items-center text-slate-400 px-6 py-2">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-['Inter'] text-[10px] font-semibold uppercase tracking-wider mt-1">Settings</span>
+</div>
+</nav>
+</div>
+</div>
+</body></html>
