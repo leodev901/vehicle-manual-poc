@@ -10,8 +10,8 @@ from app.schemas.healthz import HealthzRequest
 
 api_router = APIRouter(tags=["health"])
 
-@api_router.get("/health")
-async def health():
+@api_router.get("/healthz")
+async def healthz():
     return CommonResponse.ok({"status": "ok"})
 
 @api_router.get("/error")
@@ -21,8 +21,8 @@ async def error():
     # raise HTTPException(status_code=400, detail="Test Error")
 
 
-@api_router.post("/healthz")
-async def healthz(
+@api_router.post("/health_check")
+async def health_check(
     payload: HealthzRequest,
     healthz_service: HealthzService = Depends(HealthzService),
 ):

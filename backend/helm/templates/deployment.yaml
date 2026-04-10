@@ -29,8 +29,8 @@ spec:
             httpGet:
               path: /healthz
               port: {{ .Values.service.targetPort }}
-            initialDelaySeconds: 3
-            periodSeconds: 360
+            initialDelaySeconds: 10
+            periodSeconds: 720
           # 위에서 'secretRef' 사용해서 아래는 불필요함
           # env:
           #   - name: SUPABASE_URL
