@@ -1,81 +1,87 @@
-# inference_server/main.py (예시 가이드)
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool # 비동기 블로킹 방지용
 from sentence_transformers import SentenceTransformer
 from pydantic import BaseModel
+from typing import Union, List
 
 from contextlib import asynccontextmanager
-
 import logging
 
 # 기본 로거 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-
-# lifespan 구조를 활용해 서버가 켜질 때 딱 한 번만 2GB 모델 로드
 model = None
 EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large"
 
 @asynccontextmanager
 async def life_span(app: FastAPI):
-    # 시작 시점
     print("⏳ 모델 로딩 시작...")
     global model
+    # 모델 로딩은 서버 시작 시 1회만 발생하므로 동기로 두어도 무방합니다.
     model = SentenceTransformer(EMBEDDING_MODEL_NAME)
     print("✅ 모델 로딩 완료!")
     yield
-    # 종료 시점
     print("🛑 모델 언로드")
     
-
 app = FastAPI(
     title="Inference Server: SentenceTransformer",
     lifespan=life_span
 )
 
+# 1. CORS 미들웨어 추가 (Vercel 프론트엔드 호출 허용)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # 실무에서는 Vercel 도메인으로 특정하는 것이 안전합니다.
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# 전역 이벤트 헨들러 등록 -> 로깅
 @app.exception_handler(Exception)
 async def exception_handler(request: Request, exc: Exception):
-    # AGENTS.md 규칙: 내부 로깅은 상세하게 에러 스택을 남기고
     logger.exception("추론 서버 내부 치명적 에러 발생: %s", str(exc))
-    
-    # 사용자/외부 API에는 정제된 메시지만 전달
     return JSONResponse(
         status_code=500,
         content={
             "status": "error",
             "http_status_code": 500,
-            "message": "서버 내부에서 임베딩 생성 중 오류가 발생했습니다. 서버 로그를 확인해주세요 (https://huggingface.co/spaces/leodev901/inference-server)"
+            "message": "서버 내부에서 임베딩 생성 중 오류가 발생했습니다. 서버 로그를 확인해주세요."
         }
     )
 
-# 루트 접근시 Swagger-ui로 리디렉션
 @app.get("/")
 async def root():
     return RedirectResponse(url="/docs")
 
 
+# 3. 배치 처리 지원: 단일 문자열(str) 또는 문자열 리스트(List[str]) 모두 수용
 class EmbedRequest(BaseModel):
-    text: str
+    text: Union[str, List[str]]
 
 @app.post("/api/v1/embed")
 async def create_embedding(req: EmbedRequest):
-    logger.info(f"임베딩 생성 요청: {req.text}")
+    # 입력값이 단일 문자열이면 리스트로 통일하여 처리
+    texts = [req.text] if isinstance(req.text, str) else req.text
+    logger.info(f"임베딩 생성 요청 수: {len(texts)}건")
     
-    # 텍스트를 받아 벡터로 치환 후 리턴
-    # e5 모델은 검색어(Query) 앞에 반드시 "query: "를 붙여야 합니다.
+    # E5 모델 접두어 처리 로직 (리스트 내포 활용)
     if EMBEDDING_MODEL_NAME == "intfloat/multilingual-e5-large":
-        query_prefix = f"query: {req.text}"
+        processed_texts = [f"query: {t}" for t in texts]
     else:
-        query_prefix = req.text
-    vector = model.encode(query_prefix).tolist()    
-    # logger.info(f"임베딩 생성 완료: {vector}")
-    return {"embedding": vector}
+        processed_texts = texts
 
-
-# 실행 방법
-# cd inference_server
-# uvicorn main:app --port 8010 --reload
+    # 2. 이벤트 루프 블로킹 방지: 별도 스레드에서 무거운 추론 작업 실행
+    # model.encode는 리스트를 받아 다수의 벡터를 한 번에 반환할 수 있습니다.
+    embeddings = await run_in_threadpool(model.encode, processed_texts)
+    
+    vector_list = embeddings.tolist()
+    
+    # 단일 문자열이 들어왔을 때는 기존 스펙과 동일하게 1차원 배열만 리턴
+    if isinstance(req.text, str):
+        return {"embedding": vector_list[0]}
+    
+    # 리스트가 들어왔을 때는 2차원 배열(리스트의 리스트) 리턴
+    return {"embeddings": vector_list}
