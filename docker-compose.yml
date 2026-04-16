@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # 1. Backend Service (FastAPI + Gunicorn)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: dockerfile
+    container_name: vehicle-manual-backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8080
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Inference Server는 로컬 리소스 부담으로 외부(HF) 주소 사용
+      - HF_INFERENCE_URL=https://leodev901-inference-server.hf.space/api/v1/embed
+    depends_on:
+      - redis
+    networks:
+      - app-network
+
+  # 2. Frontend Service (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vehicle-manual-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  # 3. Cache & Session Storage (Redis)
+  redis:
+    image: redis:alpine
+    container_name: vehicle-manual-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
