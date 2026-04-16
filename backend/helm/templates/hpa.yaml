@@ -1,0 +1,65 @@
+{{- if .Values.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  # HPA 리소스 이름입니다.
+  # 운영 시 식별하기 쉽게 보통 "<앱이름>-hpa" 형태로 둡니다.
+  name: {{ .Release.Name }}-hpa
+spec:
+  scaleTargetRef:
+    # 어떤 리소스를 스케일링할지 지정합니다.
+    # 여기서는 apps/v1 Deployment를 대상으로 합니다.
+    apiVersion: apps/v1
+    kind: Deployment
+    # 반드시 실제 Deployment metadata.name 과 일치해야 합니다.
+    # 이 값이 다르면 HPA가 대상을 찾지 못합니다.
+    name: {{ .Release.Name }}
+
+  # 최소 Pod 개수와 최대 Pod 개수.
+  minReplicas: {{ .Values.hpa.minReplicas }}
+  maxReplicas: {{ .Values.hpa.maxReplicas }}
+  behavior:
+    scaleUp:
+      # scale up 판단 시 과거 상태를 얼마나 볼지 정하는 시간입니다.
+      # 0이면 현재 메트릭 기반 추천을 거의 바로 반영합니다.
+      # 즉, 부하가 올라가면 빠르게 Pod를 늘리려는 성향입니다.
+      stabilizationWindowSeconds: {{ .Values.hpa.behavior.scaleUp.stabilizationWindowSeconds }}
+      policies:
+        - type: Percent
+          # 한 번의 판단 주기에서 현재 Pod 수 대비 몇 %까지 늘릴지 정합니다.
+          # 예: 2개일 때 value 100이면 최대 4개까지 증가 가능
+          value: 100
+          # 몇 초 기준으로 위 정책을 적용할지 의미합니다.
+          periodSeconds: 120
+    scaleDown:
+      # scale down은 보통 천천히 하는 것이 안전합니다.
+      # 300이면 최근 5분 동안의 상황을 보고 보수적으로 줄입니다.
+      # 잠깐 부하가 내려갔다고 바로 축소하지 않도록 흔들림을 줄입니다.
+      stabilizationWindowSeconds: {{ .Values.hpa.behavior.scaleDown.stabilizationWindowSeconds }}
+      policies:
+        - type: Percent
+          # 한 번의 판단 주기에서 현재 Pod 수 대비 몇 %까지 줄일지 정합니다.
+          # 예: 2개일 때 value 50이면 최대 1개까지 줄일 수 있습니다.
+          value: 50
+          # 몇 초 기준으로 위 정책을 적용할지 의미합니다.
+          periodSeconds: 60
+  metrics:
+    - type: Resource
+      # CPU 사용률 기준으로 스케일링합니다.
+      resource:
+        name: cpu
+        target:
+          # Utilization은 "requests 대비 몇 %"인지 의미합니다.
+          # 그래서 deployment에 requests.cpu가 반드시 있어야 합니다.
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        # Memory 사용률 기준으로도 스케일링합니다.
+        # deployment에 requests.memory가 반드시 있어야 합니다.
+        name: memory
+        target:
+          # 마찬가지로 requests.memory 대비 평균 사용률입니다.
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.targetMemoryUtilizationPercentage }}
+{{- end }}

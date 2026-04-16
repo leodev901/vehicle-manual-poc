@@ -1,21 +1,47 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vehicle-manual-bot-api
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
 spec:
-  replicas: 1
+  # HPA를 사용하더라도 시작 replica 값은 필요합니다.
+  # 이후 실제 증감은 HPA가 메트릭을 보고 조절합니다.
+  replicas: {{ .Values.containers.replicas }}
   selector:
     matchLabels:
-      app: vehicle-manual-bot-api
+      # 아래 template.metadata.labels 값과 반드시 같아야 합니다.
+      app: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: vehicle-manual-bot-api
+        # Service와 Deployment가 같은 Pod를 바라보도록 라벨을 일관되게 맞춥니다.
+        app: {{ .Release.Name }}
     spec:
       containers:
         - name: vehicle-manual-bot-api
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            # 컨테이너 내부에서 애플리케이션이 실제로 listen 하는 포트입니다.
+            - containerPort: {{ .Values.service.targetPort }}
+
+          resources:
+            requests:
+              # HPA의 Utilization 기준은 requests 대비 사용률입니다.
+              # 그래서 CPU/Memory autoscaling을 쓰려면 requests 설정이 중요합니다
+              cpu: {{ .Values.containers.requests.cpu | quote }}
+              memory: {{ .Values.containers.requests.memory | quote }}
+            limits:
+              cpu: {{ .Values.containers.limits.cpu | quote }}
+              memory: {{ .Values.containers.limits.memory | quote }}
+          readinessProbe:
+            # readinessProbe가 성공한 Pod에만 Service 트래픽이 들어갑니다.
+            # 앱 기동 직후 아직 준비되지 않은 Pod로 요청이 가지 않게 막아줍니다.
+            httpGet:
+              path: /healthz
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 720
           envFrom:
             # configmap.yaml 파일을 컨테이너 환경 변수로 자동할당
             - configMapRef:
@@ -23,14 +49,6 @@ spec:
             # secret.yaml 파일을 컨테이너 환경 변수로 자동할당 
             - secretRef:
                 name: {{ .Release.Name }}-secret
-          ports:
-            - containerPort: {{ .Values.service.targetPort }}
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: {{ .Values.service.targetPort }}
-            initialDelaySeconds: 10
-            periodSeconds: 720
           # 위에서 'secretRef' 사용해서 아래는 불필요함
           # env:
           #   - name: SUPABASE_URL
