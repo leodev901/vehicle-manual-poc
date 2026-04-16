@@ -3,9 +3,11 @@ kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-config
 data:
-  APP_NAME: "{{ .Values.env.app_name }}"
-  APP_HOST: "{{ .Values.env.app_host }}"
-  APP_PORT: "{{ .Values.env.app_port }}"
-  APP_LOG_LEVEL: "{{ .Values.env.app_log_level }}"
-  OPENAI_MODEL: "{{ .Values.env.openai_model }}"
-  GEMINI_MODEL: "{{ .Values.env.gemini_model }}"
+  APP_NAME: {{ .Values.env.app.name | quote }}
+  APP_HOST: {{ .Values.env.app.host | quote }}
+  APP_PORT: {{ .Values.env.app.port | quote }}
+  APP_LOG_LEVEL: {{ .Values.env.app.log_level | quote }}
+  DEFAULT_PROVIDER: {{ .Values.env.llm.default_provider | quote }}
+  OPENAI_MODEL: {{ .Values.env.llm.openai.model | quote }}
+  GEMINI_MODEL: {{ .Values.env.llm.gemini.model | quote }}
+  HF_INFERENCE_URL: {{ .Values.env.huggingface.url | quote }}
