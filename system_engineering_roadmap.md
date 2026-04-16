@@ -33,11 +33,15 @@ FastAPI 기반의 어플리케이션을 넘어서, 수만 명의 트래픽을 �
    - [x] 로컬 개발 환경에서의 서비스 네트워킹 가이드 작성 (✅ **완료**)
    > 📖 학습 노트: `docs_study/learning_step2-2_docker_compose.md`
 
-## 🟠 3단계: 인프라 오케스트레이션 (Kubernetes)
+## ✅ 3단계: 인프라 오케스트레이션 (Kubernetes) — 완료
 1. **상태 진단과 자가 치유 (Probes)**
-   - **실습:** 우리가 만든 `/healthz` API를 쿠버네티스 생명주기에 연동.
+   - [x] Liveness/Readiness Probe 최적화 (`periodSeconds: 720` → `30/10` 수정) (✅ **완료**)
+   - [x] `/healthz` 로그 노이즈 제거 (`middleware.py` 적용) (✅ **완료**)
+   > 📖 학습 노트: `docs_study/learning_step3_kubernetes_probes.md`
+
 2. **자원 할당과 자동 확장 (Limits & HPA)**
-   - **실습:** 트래픽 폭주 시 서버 복제본이 10개로 자동 증식하는 과정 참관 및 파이썬 CPU Throttling 대응.
+   - [x] `hpa.yaml` 및 `values.yaml` 리소스 임계치 리뷰 완료 (✅ **완료**)
+   - [x] CPU Throttling 및 스케일링 정책(Stabilization) 이해 (✅ **완료**)
 
 ## 🔴 4단계: 데이터베이스 생존기 및 폭주 제어
 1. **커넥션 풀(Connection Pool)의 한계와 PgBouncer**

@@ -75,11 +75,11 @@
 
 | 영역 | 기술 |
 |------|------|
-| **Backend** | FastAPI, Uvicorn, Pydantic |
+| **Backend** | FastAPI, Gunicorn + Uvicorn Worker, Pydantic, uvloop |
 | **Database** | Supabase (PostgreSQL + pgvector) |
 | **LLM / RAG** | LangChain, OpenAI, Google GenAI (멀티 모델 지원) |
 | **Frontend** | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, lucide-react |
-| **Infra** | Docker, Helm, GitHub Actions CI |
+| **Infra** | Docker (Multi-stage), Docker Compose, Helm, Kubernetes (HPA, Probes), GitHub Actions CI |
 | **Data Pipeline** | PyMuPDF, Sentence-Transformers, Pandas |
 
 ---
@@ -87,7 +87,7 @@
 ## 프로젝트 구조
 
 ```
-vehicle-manual-bot-LLM-RAG/
+vehicle-manual-poc/
 ├── .github/workflows/          # CI/CD 파이프라인 (backend-ci.yaml)
 ├── inference_server/           # 🆕 독립 임베딩 추론 서버 (Hugging Face Spaces 배포)
 │   ├── main.py                 # FastAPI 임베딩 엔드포인트 (SentenceTransformer e5-large)
@@ -122,7 +122,7 @@ vehicle-manual-bot-LLM-RAG/
 │   │   │   │   ├── protocol.py
 │   │   │   │   └── healthz_repository.py
 │   │   │   └── chat/           # 챗봇 세션 도메인
-│   │   │       └── in_memory_repository.py
+│   │   │       └── memory_repository.py
 │   │   ├── schemas/            # Pydantic 데이터 모델 (Request/Response)
 │   │   │   ├── response.py     # 통합 응답 규격 (CommonResponse)
 │   │   │   ├── healthz.py      # Health Check 요청 스키마
@@ -134,8 +134,9 @@ vehicle-manual-bot-LLM-RAG/
 │   │   │   └── healthz_service.py
 │   │   └── main.py             # FastAPI App 팩토리 (lifespan 관리)
 │   ├── docs/                   # 차량 매뉴얼 PDF 원본
-│   ├── helm/                   # Kubernetes Helm Chart
-│   ├── dockerfile              # 컨테이너 빌드 파일
+│   ├── helm/                   # Kubernetes Helm Chart (Deployment, Service, HPA, ConfigMap)
+│   ├── dockerfile              # Multi-stage 컨테이너 빌드 파일 (Builder + Runtime, Rootless)
+│   ├── gunicorn_conf.py        # Gunicorn 워커 설정 (ENV 기반 동적 설정)
 │   ├── requirements.txt        # Python 의존성 목록
 │   └── .env.example            # 환경 변수 템플릿
 ├── frontend/
@@ -150,6 +151,7 @@ vehicle-manual-bot-LLM-RAG/
 │   ├── package.json
 │   └── helm/                   # Frontend Helm Chart
 ├── mocktest/                   # 데이터 파이프라인 스크립트 (PDF 파싱 → 임베딩 → DB 저장)
+├── docker-compose.yml          # 로컬 개발 환경 통합 실행 (Backend, Frontend, Redis)
 └── requirements.txt            # 데이터 파이프라인 의존성
 ```
 
