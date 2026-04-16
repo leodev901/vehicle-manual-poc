@@ -112,9 +112,17 @@ vehicle-manual-bot-LLM-RAG/
 │   │   │   └── dependencies.py # FastAPI 의존성 주입 (DI)
 │   │   ├── prompts/            # LLM 프롬프트 템플릿 분리 관리
 │   │   │   └── chat_prompts.py # 키워드 추출 / RAG 응답 생성 프롬프트
-│   │   ├── repositories/       # DB 통신 전담 계층
-│   │   │   ├── healthz_repository.py
-│   │   │   └── manual_repository.py  # 🆕 브랜드/라인업/모델/RAG 하이브리드 검색
+│   │   ├── repositories/       # DB 통신 전담 계층 (Domain-Driven Design)
+│   │   │   ├── protocol.py     # 공통 인터페이스 (Protocol)
+│   │   │   ├── manual/         # 🆕 차량 매뉴얼 도메인
+│   │   │   │   ├── supabase_repository.py
+│   │   │   │   ├── sqlalchemy_repository.py
+│   │   │   │   └── mock_repository.py
+│   │   │   ├── health/         # 헬스체크 도메인
+│   │   │   │   ├── protocol.py
+│   │   │   │   └── healthz_repository.py
+│   │   │   └── chat/           # 챗봇 세션 도메인
+│   │   │       └── in_memory_repository.py
 │   │   ├── schemas/            # Pydantic 데이터 모델 (Request/Response)
 │   │   │   ├── response.py     # 통합 응답 규격 (CommonResponse)
 │   │   │   ├── healthz.py      # Health Check 요청 스키마
@@ -143,6 +151,23 @@ vehicle-manual-bot-LLM-RAG/
 │   └── helm/                   # Frontend Helm Chart
 ├── mocktest/                   # 데이터 파이프라인 스크립트 (PDF 파싱 → 임베딩 → DB 저장)
 └── requirements.txt            # 데이터 파이프라인 의존성
+```
+
+---
+
+## CI/CD 구조 분석:
+
+```
+[GitHub Actions - CI가 하는 일]                [ArgoCD - CD가 하는 일]
+┌─────────────────────────────────┐            ┌────────────────────────────┐
+│ 1. values.yaml의 placeholder를   │            │ 4. GHCR에 새 이미지 확인     │
+│    GitHub Secret으로 sed 치환    │            │                            │
+│                                 │ Docker     │ 5. values.yaml의 image.tag │
+│ 2. Docker 이미지 빌드            │ Image Push │    을 보고 새 이미지로        │
+│                                  │  ────────► │    K8s 배포 (helm upgrade) │
+│ 3. GHCR에 이미지 push            │            │                             │
+│    (태그: latest + git sha)      │            │ 6. Pod 롤링 업데이트         │
+└─────────────────────────────────┘            └────────────────────────────┘
 ```
 
 ---

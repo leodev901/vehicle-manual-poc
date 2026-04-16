@@ -3,10 +3,13 @@ kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-config
 data:
-  APP_NAME: {{ .Values.env.app.name | quote }}
-  APP_HOST: {{ .Values.env.app.host | quote }}
-  APP_PORT: {{ .Values.env.app.port | quote }}
-  APP_LOG_LEVEL: {{ .Values.env.app.log_level | quote }}
+  APP_NAME: {{ .Values.service.name | quote }}
+  APP_HOST: {{ .Values.service.host | quote }}
+  APP_PORT: {{ .Values.service.targetPort | quote }}
+  APP_LOG_LEVEL: {{ .Values.service.log_level | quote }}
+  GUNICORN_WORKERS: {{ .Values.service.worker | quote }}
+  GUNICORN_TIMEOUT: {{ .Values.service.workerTimeout | quote }}
+
   DEFAULT_PROVIDER: {{ .Values.env.llm.default_provider | quote }}
   OPENAI_MODEL: {{ .Values.env.llm.openai.model | quote }}
   GEMINI_MODEL: {{ .Values.env.llm.gemini.model | quote }}

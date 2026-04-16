@@ -10,10 +10,16 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 4. 소스 코드 복사
+# gunicorn_conf.py도 복사해야 합니다
+COPY gunicorn_conf.py /app/gunicorn_conf.py
 COPY app/ /app/app/
 
 # 5. 포트 노출
 EXPOSE 8080
 
 # 6. 실행 명령어 uvicorn으로 fastAPI 실행
-CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port 8080"]
+# 단일 uvicorn 하나로 실행 할 때 
+# CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port 8080"]
+
+# gunicorn + uvicorn worker 조합 실행으로 교체
+CMD ["gunicorn", "-c", "gunicorn_conf.py", "app.main:app"]

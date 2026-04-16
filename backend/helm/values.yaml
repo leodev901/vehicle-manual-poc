@@ -20,10 +20,15 @@ containers:
 # Service Configuration
 # =======================================
 service:
+  name: "vehicle-manual-poc-api"
   port: 80
   targetPort: 8080
+  host: "0.0.0.0"
+  log_level: "info"
+  
+  # Gunicorn Worker 설정
   worker: 1
-
+  workerTimeout: 180
 
 # =======================================
 # Autoscaling Configuration (HPA)
@@ -65,11 +70,6 @@ hpa:
 # Environment Variables
 # =======================================
 env:
-  app:
-    name: "Vehicle Manual Poc API"
-    host: "0.0.0.0"
-    port: "8080"
-    log_level: "info"
   # Supabase
   supabase:
     url: "github-secret-supabase-url"
