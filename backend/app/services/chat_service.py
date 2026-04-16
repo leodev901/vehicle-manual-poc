@@ -6,7 +6,7 @@ from langchain_core.output_parsers import StrOutputParser
 
 from app.core.dependencies import get_supabase_client, get_llm_client, get_langchain_client
 from app.schemas.chat import ChatRequest
-from app.repositories.manual_repository import ManualRepository
+from app.repositories.manual.supabase_repository import ManualSupabaseRepository
 from app.prompts.chat_prompts import MANUAL_KEYWORD_EXTRACTION_PROMPT, RAG_CHAT_PROMPT, MOCK_CONTEXT
 from app.core.config import settings
 
@@ -230,7 +230,7 @@ class ChatService:
 
 
         # Supabase RAG 검색
-        repo = ManualRepository(self.supabase)
+        repo = ManualSupabaseRepository(self.supabase)
         results = await repo.search_manual_rag(
             model_id=payload.model_id,
             query=keywords,

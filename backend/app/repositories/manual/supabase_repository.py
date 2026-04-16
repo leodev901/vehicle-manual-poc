@@ -7,7 +7,7 @@ from app.core.dependencies import get_supabase_client
 # embedding = SentenceTransformer('intfloat/multilingual-e5-large')
 
 
-class ManualRepository:
+class ManualSupabaseRepository:
     def __init__(
         self, 
         supabase: AsyncClient = Depends(get_supabase_client)

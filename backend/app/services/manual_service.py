@@ -1,14 +1,11 @@
-from fastapi import Depends
 from fastapi import HTTPException
-from supabase import AsyncClient
-from app.core.dependencies import get_supabase_client
-from app.repositories.manual_repository import ManualRepository
+from app.repositories.manual.protocol import ManualRepositoryProtocol
 
 
 class ManualService:
     def __init__(
         self,
-        manual_repository: ManualRepository = Depends(ManualRepository),
+        manual_repository: ManualRepositoryProtocol,
     ):
         self.manual_repository = manual_repository
 

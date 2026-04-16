@@ -2,7 +2,7 @@ from supabase import AsyncClient
 from fastapi import HTTPException, Depends
 
 from app.schemas.healthz import HealthzRequest
-from app.repositories.healthz_repository import HealthzRepository
+from app.repositories.health.healthz_repository import HealthzRepository
 from app.core.dependencies import get_supabase_client
 
 class HealthzService:
