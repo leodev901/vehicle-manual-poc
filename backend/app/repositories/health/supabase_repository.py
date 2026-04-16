@@ -1,7 +1,9 @@
+from fastapi import Depends
 from supabase import AsyncClient
+from app.core.supabase import get_supabase_client
 
-class HealthzRepository:
-    def __init__(self, supabase: AsyncClient):
+class HealthzSupabaseRepository:
+    def __init__(self, supabase: AsyncClient = Depends(get_supabase_client)):
         self.supabase = supabase
 
     async def health_check(self, schema_name:str, table_name:str):

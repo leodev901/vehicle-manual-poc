@@ -1,11 +1,6 @@
-from supabase import AsyncClient
 from fastapi import Depends
+from supabase import AsyncClient
 from app.core.dependencies import get_supabase_client
-# from sentence_transformers import SentenceTransformer
-
-# 임베딩 모델 로드 별도 inference_server 서버에 모델 기동
-# embedding = SentenceTransformer('intfloat/multilingual-e5-large')
-
 
 class ManualSupabaseRepository:
     def __init__(

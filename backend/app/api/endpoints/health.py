@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.core.dependencies import get_supabase_client
+from app.core.dependencies import get_health_service
+from app.core.supabase import get_supabase_client
 from app.base.logger import logger
 from app.schemas.response import CommonResponse
 
@@ -24,7 +25,7 @@ async def error():
 @api_router.post("/health_check")
 async def health_check(
     payload: HealthzRequest,
-    healthz_service: HealthzService = Depends(HealthzService),
+    healthz_service: HealthzService = Depends(get_health_service),
 ):
     result = await healthz_service.health_check(payload)
     return CommonResponse.ok(result)

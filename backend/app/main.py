@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from app.api.routes import register_routes
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.database import create_supabase_client
+from app.core.database import create_engine, dispose_engine
+from app.core.supabase import create_supabase_client
 from app.core.llm import create_llm_client, create_langchain_client
 from app.base.exceptions import register_exception_handlers
 from app.base.middleware import RequestLoggingMiddleware
@@ -28,10 +29,15 @@ async def life_span(app: FastAPI) -> None:
     app.state.supabase = await create_supabase_client()
     app.state.llm = create_llm_client()
     app.state.langchain = create_langchain_client()
+    
+    # database engine 생성 - 싱글톤
+    await create_engine()
 
     yield
 
     print("Shutting down...")
+    # database engine 종료
+    await dispose_engine()
 
 
 

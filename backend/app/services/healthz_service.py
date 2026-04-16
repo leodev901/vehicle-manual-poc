@@ -1,13 +1,16 @@
-from supabase import AsyncClient
+
 from fastapi import HTTPException, Depends
 
 from app.schemas.healthz import HealthzRequest
-from app.repositories.health.healthz_repository import HealthzRepository
-from app.core.dependencies import get_supabase_client
+from app.repositories.health.protocol import HealthzRepositoryProtocol
+
 
 class HealthzService:
-    def __init__(self, supabase: AsyncClient = Depends(get_supabase_client)):
-        self.supabase = supabase
+    def __init__(
+        self, 
+        health_repository:  HealthzRepositoryProtocol
+    ):
+        self.health_repository = health_repository
 
     async def health_check(
         self,
@@ -18,8 +21,7 @@ class HealthzService:
         table_name = payload.table_name
 
         # DB작업은 repositories를 통해서 진행합니다.
-        repo = HealthzRepository(self.supabase)
-        data = await repo.health_check(schema_name, table_name)
+        data = await self.health_repository.health_check(schema_name, table_name)
         if not data: 
             # 데이터가 없을 경우 HTTPException
             raise HTTPException(status_code=404, detail="Data not found")
