@@ -9,4 +9,5 @@ service:
 
 # API 서버의 기본 URL 주소를 지정합니다.
 # 클러스터(환경)별로 이 값을 덮어씌워(Override) 사용합니다.
-apiBaseUrl: "https://keyboards-executives-offers-stuff.trycloudflare.com"
+# apiBaseUrl: "https://keyboards-executives-offers-stuff.trycloudflare.com"
+apiBaseUrl: "https://sum-pos-amsterdam-waiver.trycloudflare.com"

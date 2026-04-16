@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vehicle-manual-bot
+  name: {{ .Release.Name }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: vehicle-manual-bot
+      app: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: vehicle-manual-bot
+        app: {{ .Release.Name }}
     spec:
       containers:
         - name: vehicle-manual-bot
