@@ -40,8 +40,21 @@ spec:
             httpGet:
               path: /healthz
               port: {{ .Values.service.targetPort }}
-            initialDelaySeconds: 10
-            periodSeconds: 720
+            initialDelaySeconds: 15   # LLM 모델 로딩 시간 고려 (너무 짧으면 재시작 루프)
+            periodSeconds: 30         # 30초 마다 체크 (보통 10초 권장)
+            timeoutSeconds: 10        # LLM 앱 특성상 응답이 살짝 느릴 수 있음
+            failureThreshold: 3       # 3번 연속 실패(90초)가 되어야 트래픽 차단
+            successThreshold: 1       # 한 번만 성공해도 즉시 트래픽 허용
+
+          livenessProbe:
+            # livenessProbe가 실패하면 K8s가 컨테이너를 강제 재시작합니다.
+            httpGet:
+              path: /healthz
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: 60   # readiness보다 늦게 시작 (앱 충분히 뜬 후 판단)
+            periodSeconds: 600        # 너무 자주 하면 재시작 폭풍 발생 가능 - 10분 (Gunicorn이 1단 방어, 이건 최후 보루 역할)
+            timeoutSeconds: 10        # LLM 앱 특성상 응답이 살짝 느릴 수 있음
+            failureThreshold: 3       # 3번 연속 실패(30분)가 되어야 컨테이너 재시작
           envFrom:
             # configmap.yaml 파일을 컨테이너 환경 변수로 자동할당
             - configMapRef:

@@ -9,6 +9,7 @@ from app.base.logger import logger
 
 EXCLUDE_PATH = [
     "/health",
+    "/healthz",
     "/docs",
     "/redoc",
     "/openapi.json",
