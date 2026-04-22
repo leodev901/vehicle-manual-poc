@@ -39,6 +39,7 @@ def get_logger(
             encoding="utf-8",
             interval=2,
             utc=False,
+            backupCount=15
         )
         file_handler.setFormatter(formatter)
         file_handler.setLevel( getattr(logging, level.upper(), logging.INFO) )
