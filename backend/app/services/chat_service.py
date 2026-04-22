@@ -3,12 +3,12 @@ import httpx
 from fastapi import Depends
 from supabase import Client
 from langchain_core.output_parsers import StrOutputParser
-
-from app.core.dependencies import get_supabase_client, get_llm_client, get_langchain_client
+from app.core.dependencies import get_supabase_client, get_llm_client, get_langchain_client, get_chat_models
 from app.schemas.chat import ChatRequest
 from app.repositories.manual.supabase_repository import ManualSupabaseRepository
 from app.prompts.chat_prompts import MANUAL_KEYWORD_EXTRACTION_PROMPT, RAG_CHAT_PROMPT, MOCK_CONTEXT
 from app.core.config import settings
+
 
 class ChatService:
 
@@ -22,12 +22,17 @@ class ChatService:
         supabase: Client = Depends(get_supabase_client), 
         llm: dict = Depends(get_llm_client),
         langchain: dict = Depends(get_langchain_client),
+        models: dict = Depends(get_chat_models)
     ):
         self.supabase = supabase
         self.llm = llm
         self.langchain = langchain
+        self.models = models
         
 
+    # 특이사항
+    # "OPENAI" -> langchain 1.0 version으로 마이그레이션 
+    # "GEMINI" -> 직접 클라이언트 문법에 맞게 호출 함
     async def chat(self, request: ChatRequest):
 
         #TODO: Kewyrod Extraction - LLM
@@ -37,14 +42,18 @@ class ChatService:
         model = request.llm_config.model
 
         if provider.upper() == "OPENAI":
-            client = self.llm[provider]
-            response = client.responses.create(
-                model=model,
-                input=MANUAL_KEYWORD_EXTRACTION_PROMPT.format(
-                    question=request.message
-                )
-            )
-            keywords = response.output_text.strip()
+            model = self.models[provider]
+            response = await model.ainvoke(MANUAL_KEYWORD_EXTRACTION_PROMPT.format(question=request.message))
+            keywords = response.content.strip()
+            # 직접 호출 방법
+            # client = self.llm[provider]
+            # response = client.responses.create(
+            #     model=model,
+            #     input=MANUAL_KEYWORD_EXTRACTION_PROMPT.format(
+            #         question=request.message
+            #     )
+            # )
+            # keywords = response.output_text.strip()
 
         elif provider.upper() == "GEMINI":
             client = self.llm[provider]
@@ -70,25 +79,37 @@ class ChatService:
         #TODO: LLM (최종 답변 생성) - client는 앞선 client 사용
         # LangChain의 format_messages 반환값을 각 SDK에 맞는 형식으로 변환
         if provider.upper() == "OPENAI":
-            # ChatPromptTemplate은 역할별 메시지 배열을 만들어줍니다
-            messages = RAG_CHAT_PROMPT.format_messages(
+            # ChatPromptTemplate은 역할별 메시지 List[BaseMessage]를 반환합니다.
+            messages = RAG_CHAT_PROMPT.format(
                 context=context,
                 question=request.message
             )
-            # OpenAI는 [{"role": "system", "content": "..."}, ...] 형식 사용
-            openai_messages = [{"role": msg.type, "content": msg.content} for msg in messages]
+            print(messages)
+            # 모델에 호출 할 때 그대로 List[BaseMessage] 타입을 전달 하면 됨
+            response = await model.ainvoke(messages)
+            print(response)
+            answer = response.content.strip()
+
+
+            # ChatPromptTemplate은 역할별 메시지 배열을 만들어줍니다
+            # messages = RAG_CHAT_PROMPT.format_messages(
+            #     context=context,
+            #     question=request.message
+            # )
+            # # OpenAI는 [{"role": "system", "content": "..."}, ...] 형식 사용
+            # openai_messages = [{"role": msg.type, "content": msg.content} for msg in messages]
             
-            print(openai_messages)
+            # print(openai_messages)
             
-            # 주의: system/human 등을 실제 OpenAI 롤(system/user 등)로 매핑 필요
-            for msg in openai_messages:
-                if msg["role"] == "human": msg["role"] = "user"
+            # # 주의: system/human 등을 실제 OpenAI 롤(system/user 등)로 매핑 필요
+            # for msg in openai_messages:
+            #     if msg["role"] == "human": msg["role"] = "user"
                 
-            final_response = client.chat.completions.create(
-                model=model,
-                messages=openai_messages
-            )
-            answer = final_response.choices[0].message.content.strip()
+            # final_response = client.chat.completions.create(
+            #     model=model,
+            #     messages=openai_messages
+            # )
+            # answer = final_response.choices[0].message.content.strip()
             
         elif provider.upper() == "GEMINI":
             # Gemini SDK(genai)의 generate_content는 content 인자로 텍스트나 배열을 받습니다

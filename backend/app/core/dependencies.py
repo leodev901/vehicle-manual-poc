@@ -25,6 +25,13 @@ async def get_langchain_client(request: Request) -> dict:
     """
     return request.app.state.langchain
 
+async def get_chat_models(request: Request) -> dict:
+    """
+    Request 객체에서 app.state에 저장된 chat models를 추출하여 반환합니다.
+    """
+    return request.app.state.models
+
+
 # ============================================================================
 # Service Dependencies
 # ============================================================================

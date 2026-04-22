@@ -10,9 +10,15 @@ uvloop; sys_platform != "win32"
 
 google-genai
 openai
+#langchian 0.1 version
 langchain_core
 langchain_openai
 langchain_google_genai
+#langchian 1.0+ version
+langchain
+langchain-openai
+langchain-google-genai
+#langgraph
 langgraph
 
 
