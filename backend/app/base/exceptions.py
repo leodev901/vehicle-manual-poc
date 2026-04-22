@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from postgrest.exceptions import APIError
+from pydantic import ValidationError
 
 from app.base.logger import logger
 
@@ -12,9 +13,27 @@ def register_exception_handlers(app: FastAPI):
     """
     logger.info("Registering exception handlers...")
     app.add_exception_handler(Exception, global_exception_handler)
-    app.add_exception_handler(HTTPException, http_exception_handelr)
+    app.add_exception_handler(HTTPException, http_exception_handeler)
     app.add_exception_handler(RequestValidationError, request_validation_error_handler)
+    app.add_exception_handler(ValidationError, pydantic_validation_error_handler)
     app.add_exception_handler(APIError, supabse_exception_handler)
+
+
+
+# global exception handler  - 최상위 Exception을 잡기 위한 핸들러
+async def global_exception_handler(request: Request, exc: Exception):
+    """global exception handler  - 최상위 Exception을 잡기 위한 핸들러
+    """
+    logger.exception(f"[{getattr(request.state,'trace_id','unknown')}] {type(exc).__name__} - {exc}")
+    # raise HTTPException(status_code=500, detail="Internal server error")
+    return JSONResponse(
+        status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+        content={
+            "success": False,
+            "error_code": HTTPStatus.INTERNAL_SERVER_ERROR,
+            "message": "요청 처리 중 오류가 발생했습니다."
+        }
+    )
 
 
 # Supabse(PostgRest)에서 발생하는 모든 APIError를 가로채서 FastAPI규격에 맞는 JSON 응답으로 반환합니다.
@@ -39,17 +58,19 @@ async def supabse_exception_handler(request: Request, exc: APIError):
     
 
 # HTTPException을 던지면 이 핸들러가 잡아서 JSONResponse로 변환해서 리턴
-async def http_exception_handelr(request: Request, exc: HTTPException):
+async def http_exception_handeler(request: Request, exc: HTTPException):
     """HTTPException을 던지면 이 핸들러가 잡아서 JSONResponse로 변환해서 리턴
     """
-
+    detail = exc.detail
+    message = detail if isinstance(detail, str) else "요청 처리에 실패했습니다."
     logger.error(f"[{getattr(request.state,'trace_id','unknown')}] {type(exc).__name__} -{exc.status_code}- {exc}")
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "success": False,
             "error_code": exc.status_code,
-            "message": exc.detail
+            "message": message,
+            "detail": detail
         }
     )
 
@@ -61,21 +82,21 @@ async def request_validation_error_handler(request: Request, exc: RequestValidat
         content={
             "success": False,
             "error_code": HTTPStatus.BAD_REQUEST,
-            "message": "입력값 또는 형식이 잘못되었습니다."
+            "message": "요청 입력값 또는 형식이 잘못되었습니다.",
+            "detail": exc.errors()
         }
     )
 
-# global exception handler  - 최상위 Exception을 잡기 위한 핸들러
-async def global_exception_handler(request: Request, exc: Exception):
-    """global exception handler  - 최상위 Exception을 잡기 위한 핸들러
-    """
+
+# Pydantic Validation Error
+async def pydantic_validation_error_handler(request: Request, exc: ValidationError):
     logger.error(f"[{getattr(request.state,'trace_id','unknown')}] {type(exc).__name__} - {exc}")
-    # raise HTTPException(status_code=500, detail="Internal server error")
     return JSONResponse(
         status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
         content={
             "success": False,
-            "error_code": 500,
-            "message": "요청 처리 중 오류가 발생했습니다."
+            "error_code": HTTPStatus.INTERNAL_SERVER_ERROR,
+            "message": "입력값 또는 형식의 변환이 실패 하였습니다.",
+            "detail": exc.errors()
         }
     )
