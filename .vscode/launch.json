@@ -8,8 +8,8 @@
             "name": "FastAPI-Vehicle Manual Main",
             "type": "debugpy",
             "request": "launch",
-            // "python": "${workspaceFolder}/backend/.venv/bin/python3",
-            "python": "${workspaceFolder}/backend/.venv/Scripts/python",
+            "python": "${workspaceFolder}/backend/.venv/bin/python3",
+            // "python": "${workspaceFolder}/backend/.venv/Scripts/python",
             "cwd": "${workspaceFolder}/backend",
             "module": "uvicorn",
             "args": [
@@ -27,6 +27,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/inference_server/.venv/bin/python3",
+            // "python": "${workspaceFolder}/inference_server/.venv/Scripts/python",
             "cwd": "${workspaceFolder}/inference_server",
             "module": "uvicorn",
             "args": [
