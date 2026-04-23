@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from app.api.routes import register_routes
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,8 +7,7 @@ from app.core.supabase import create_supabase_client
 from app.core.llm import create_llm_clients, create_langchain_clients, create_chat_models
 from app.base.exceptions import register_exception_handlers
 from app.base.middleware import RequestLoggingMiddleware
-
-
+from app.core.config import settings
 
 # ============================================================
 # uvloop: Python 기본 asyncio 이벤트 루프를 C 기반(libuv)으로 교체
@@ -21,6 +21,17 @@ import asyncio
 if sys.platform != "win32":
     import uvloop
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+
+
+# LangSmith 환경변수 설정
+# LangChain은 환경변수를 읽어서 자동으로 트레이싱을 활성화합니다
+if settings.LANGCHAIN_TRACING_V2:
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_ENDPOINT"] = settings.LANGCHAIN_ENDPOINT
+    os.environ["LANGCHAIN_API_KEY"] = settings.LANGCHAIN_API_KEY
+    os.environ["LANGCHAIN_PROJECT"] = settings.LANGCHAIN_PROJECT
+    os.environ["LANGCHAIN_TAGS"] = settings.APP_ENV
 
 
 async def life_span(app: FastAPI) -> None:

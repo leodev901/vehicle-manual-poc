@@ -3,6 +3,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8",extra="ignore")
 
+    APP_ENV: str = 'local'
+
     database_url: str
     db_pool_size: int = 10
     db_max_overflow: int = 20
@@ -18,8 +20,15 @@ class Settings(BaseSettings):
     GEMINI_API_KEY:str
     GEMINI_MODEL:str
 
+    #HuggingFace
     HF_INFERENCE_URL:str = "https://leodev901-inference-server.hf.space/api/v1/embed"
     HF_TOKEN:str
+
+    # LangSmith 설정 (선택적 - 없으면 트레이싱 비활성화)
+    LANGCHAIN_TRACING_V2: bool = False
+    LANGCHAIN_ENDPOINT: str = "https://api.smith.langchain.com"
+    LANGCHAIN_API_KEY: str = ""
+    LANGCHAIN_PROJECT: str = "vehicle-manual-poc"
 
 
 settings = Settings()

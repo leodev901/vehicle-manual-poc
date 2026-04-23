@@ -77,7 +77,8 @@
 |------|------|
 | **Backend** | FastAPI, Gunicorn + Uvicorn Worker, Pydantic, uvloop |
 | **Database** | Supabase (PostgreSQL + pgvector) |
-| **LLM / RAG** | LangChain, OpenAI, Google GenAI (멀티 모델 지원) |
+| **LLM / RAG** | LangChain LCEL, OpenAI, Google GenAI (멀티 모델 지원) |
+| **Observability** | LangSmith (LLM 트레이싱, 모델별 비용/지연시간 분석, Prompt 버전 관리) |
 | **Frontend** | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, lucide-react |
 | **Infra** | Docker (Multi-stage), Docker Compose, Helm, Kubernetes (HPA, Probes), GitHub Actions CI |
 | **Data Pipeline** | PyMuPDF, Sentence-Transformers, Pandas |
@@ -238,6 +239,23 @@ Client Response ← CommonResponse 규격 또는 실시간 StreamingResponse(SSE
   * `chat()`: 각 제조사의 고유 파이썬 SDK 문법을 기반으로 분기(`if/elif`)하여 처리하는 로직
   * `chat_langchain()`: LangChain의 **LCEL(`prompt | llm | parser`)** 문법을 활용, 제조사 인터페이스 차이를 흡수하고 단일화된 파이프라인으로 처리.
 
+### LLM Observability (LangSmith 연동)
+LLM 애플리케이션의 블랙박스를 열어 운영 가시성을 확보하기 위해 **LangSmith**를 연동합니다.
+
+* **자동 트레이싱**: `LANGCHAIN_TRACING_V2=true` 환경변수 하나만으로 모든 LangChain LCEL 체인 호출이 자동으로 LangSmith에 기록됩니다. (코드 수정 불필요)
+* **환경별 프로젝트 분리**: `APP_ENV` 값에 따라 LangSmith 프로젝트명이 `vehicle-manual-poc-{env}` 로 자동 구성되어, `dev`/`stg`/`prd` 데이터가 섞이지 않습니다.
+* **전역 환경 태그**: 모든 Run에 `APP_ENV` 태그가 자동으로 붙어 대시보드 필터 검색이 용이합니다. (`LANGCHAIN_TAGS`)
+
+| LangSmith 활용 항목 | 내용 |
+|---------------------|------|
+| **Trace 분석** | 키워드 추출 → 임베딩 → RAG 검색 → 답변 생성 전 단계 실행 흐름 시각화 |
+| **비용 추적** | 요청 1건당 토큰 사용량 및 OpenAI 비용 실시간 집계 |
+| **모델 비교** | 동일 질문으로 OpenAI / Gemini 지연시간·품질 A/B 비교 실험 |
+| **Prompt 버전 관리** | Prompt Hub에 프롬프트를 올려두고 코드 배포 없이 수정·롤백 |
+| **품질 자동화** | Dataset + Evaluator로 프롬프트 변경 시 자동 품질 점수 산출 |
+
+> 📚 상세 실습 가이드: [`docs_study/learning_step4_langsmith.md`](./docs_study/learning_step4_langsmith.md)
+
 ### 전역 예외 처리 (Global Exception Handler)
 `base/exceptions.py`에서 모든 예외를 중앙 관리하여, 각 계층(Router/Service/Repo)에서 `try-except` 없이 코드를 작성할 수 있습니다.
 
@@ -287,8 +305,29 @@ Client Response ← CommonResponse 규격 또는 실시간 StreamingResponse(SSE
 ```bash
 cd backend
 cp .env.example .env
-# .env 파일에 실제 Supabase URL과 Key를 입력합니다.
+# .env 파일에 실제 값을 입력합니다.
 ```
+
+필수 환경 변수 목록:
+
+| 변수 | 설명 | 예시 |
+|------|------|------|
+| `APP_ENV` | 실행 환경 구분 | `local` / `dev` / `stg` / `prd` |
+| `DATABASE_URL` | Supabase PostgreSQL 연결 URL | `postgresql+asyncpg://...` |
+| `SUPABASE_URL` | Supabase 프로젝트 URL | `https://xxx.supabase.co` |
+| `SUPABASE_KEY` | Supabase Service Role Key | `eyJ...` |
+| `PROVIDER` | 기본 LLM 제공자 | `OPENAI` / `GEMINI` |
+| `OPENAI_API_KEY` | OpenAI API Key | `sk-proj-...` |
+| `OPENAI_MODEL` | 사용할 OpenAI 모델명 | `gpt-4o-mini` |
+| `GEMINI_API_KEY` | Google Gemini API Key | `AIza...` |
+| `GEMINI_MODEL` | 사용할 Gemini 모델명 | `gemini-2.0-flash` |
+| `HF_INFERENCE_URL` | HuggingFace 임베딩 서버 URL | `https://...hf.space/api/v1/embed` |
+| `HF_TOKEN` | HuggingFace API Token | `hf_...` |
+| `LANGCHAIN_TRACING_V2` | LangSmith 트레이싱 활성화 | `true` / `false` |
+| `LANGCHAIN_API_KEY` | LangSmith API Key | `ls-...` |
+| `LANGCHAIN_PROJECT` | LangSmith 프로젝트명 | `vehicle-manual-poc` |
+
+> **LangSmith 설정**: `LANGCHAIN_TRACING_V2=true`로 설정하면 모든 LLM 호출이 자동으로 LangSmith 대시보드에 기록됩니다. `APP_ENV` 값에 따라 LangSmith 프로젝트가 `vehicle-manual-poc-dev` / `vehicle-manual-poc-prd` 등으로 자동 분리되어 환경별 오염이 방지됩니다. API Key는 [smith.langchain.com](https://smith.langchain.com) 에서 발급합니다.
 
 ### 2. 의존성 설치 및 실행
 ```bash

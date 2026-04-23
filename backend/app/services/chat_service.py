@@ -3,11 +3,14 @@ import httpx
 from fastapi import Depends
 from supabase import Client
 from langchain_core.output_parsers import StrOutputParser
+from langsmith import traceable
+
 from app.core.dependencies import get_supabase_client, get_llm_client, get_langchain_client, get_chat_models
 from app.schemas.chat import ChatRequest
 from app.repositories.manual.supabase_repository import ManualSupabaseRepository
 from app.prompts.chat_prompts import MANUAL_KEYWORD_EXTRACTION_PROMPT, RAG_CHAT_PROMPT, MOCK_CONTEXT
 from app.core.config import settings
+
 
 
 class ChatService:
@@ -202,7 +205,7 @@ class ChatService:
             "response":data
         }
 
-
+    # @traceable(name="chat_stream", run_type="chat")
     async def chat_stream(self, payload:ChatRequest):
         """
         스트리밍 응답을 위한 제너레이터 함수
@@ -232,7 +235,7 @@ class ChatService:
 
         #TODO: RAG 검색 
         # 임베딩 서버 호출
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             data = {
                 "text": keywords,
             }
