@@ -106,11 +106,12 @@ vehicle-manual-poc/
 │   │   │   │   └── manual.py   # 🆕 차량 브랜드/라인업/모델 조회 엔드포인트
 │   │   │   └── routes.py       # 라우터 통합 등록
 │   │   ├── base/               # 공통 기반 모듈
+│   │   │   ├── context.py      # 🆕 contextvars 기반 trace_id 요청 컨텍스트 관리
 │   │   │   ├── exceptions.py   # 전역 예외 처리 핸들러
 │   │   │   ├── http_client.py   # 🆕 공통 httpx AsyncClient 커넥션 풀 + 외부 호출 로깅
-│   │   │   ├── logger.py       # 로깅 설정 (TimedRotatingFileHandler)
+│   │   │   ├── logger.py       # trace_id 포함 로깅 설정 (TimedRotatingFileHandler)
 │   │   │   ├── middleware.py   # 요청/응답 로깅 미들웨어
-│   │   │   └── opentelemtry.py # 🆕 OpenTelemetry OTLP 로그 전송 설정 (Grafana Cloud)
+│   │   │   └── opentelemetry.py # 🆕 OpenTelemetry OTLP 로그 전송 설정 (Grafana Cloud)
 │   │   ├── core/               # 핵심 설정
 │   │   │   ├── config.py       # 환경 변수 관리 (pydantic-settings, HF_TOKEN 포함)
 │   │   │   ├── database.py     # Supabase 클라이언트 생성
@@ -275,7 +276,7 @@ LLM 애플리케이션의 블랙박스를 열어 운영 가시성을 확보하�
 ### OpenTelemetry + Grafana 로그 관측성
 LangSmith가 LLM 체인 내부를 보여준다면, OpenTelemetry는 백엔드 애플리케이션의 운영 로그를 표준 방식으로 외부 관측 플랫폼에 전달합니다.
 
-* **OTLP HTTP Exporter**: `backend/app/base/opentelemtry.py`에서 Python 로그를 OpenTelemetry 로그 레코드로 변환하고, Grafana Cloud OTLP endpoint로 전송합니다.
+* **OTLP HTTP Exporter**: `backend/app/base/opentelemetry.py`에서 Python 로그를 OpenTelemetry 로그 레코드로 변환하고, Grafana Cloud OTLP endpoint로 전송합니다.
 * **Grafana Cloud 인증**: `GRAFANA_INSTANCE_ID`와 `GRAFANA_API_TOKEN`을 Basic 인증 헤더로 구성하여 Grafana OTLP Gateway에 연결합니다.
 * **서비스 메타데이터 부여**: `service.name`, `service.version`, `service.instance.id`, `deployment.environment`를 Resource로 기록해 환경별 로그 필터링이 가능합니다.
 * **Lifespan 기반 초기화/종료**: FastAPI `lifespan`에서 시작 시 `setup_opentelemetry()`, 종료 시 `shutdown_opentelemetry()`를 호출하여 exporter 자원을 안전하게 정리합니다.
@@ -291,12 +292,13 @@ LangSmith가 LLM 체인 내부를 보여준다면, OpenTelemetry는 백엔드 �
 | `Exception` (전역) | 500 | 예상하지 못한 모든 에러의 최종 방어막 |
 
 ### 요청 추적 (Trace ID)
-모든 요청에 고유한 `trace_id`를 부여하여, 요청의 시작부터 에러 발생까지 전체 흐름을 하나의 ID로 추적할 수 있습니다.
+모든 요청에 고유한 `trace_id`를 부여하여, 요청의 시작부터 에러 발생까지 전체 흐름을 하나의 ID로 추적할 수 있습니다. 특히 `contextvars`를 사용해 현재 비동기 요청 컨텍스트에 `trace_id`를 바인딩하므로, Service/Repository/외부 HTTP 호출 로그에서도 같은 추적 ID를 유지할 수 있습니다.
 
 **동작 방식:**
-1. 클라이언트가 `trace-id` 헤더를 보내면 해당 값을 사용합니다.
+1. 클라이언트가 `x-trace-id` 헤더를 보내면 해당 값을 사용합니다.
 2. 헤더가 없으면 서버가 `uuid4`로 자동 생성합니다.
-3. `request.state.trace_id`에 저장되어 미들웨어 → 예외 핸들러까지 일관되게 전파됩니다.
+3. `request.state.trace_id`와 `contextvars.ContextVar`에 함께 저장되어 미들웨어 → 로거 → OpenTelemetry 핸들러까지 일관되게 전파됩니다.
+4. 응답 헤더에도 `x-trace-id`를 내려주기 때문에, 프론트엔드/백엔드/Grafana 로그를 같은 ID로 연결해 볼 수 있습니다.
 
 **로그 출력 예시:**
 ```
@@ -307,7 +309,10 @@ LangSmith가 LLM 체인 내부를 보여준다면, OpenTelemetry는 백엔드 �
 
 | 계층 | trace_id 활용 |
 |------|--------------|
-| `middleware.py` | 생성 및 Request/Response 로그에 기록 |
+| `context.py` | `ContextVar`로 현재 async 요청의 `trace_id` 저장/복구 |
+| `middleware.py` | `x-trace-id` 수신 또는 UUID 생성, Request/Response 로그 기록, 응답 헤더 전파 |
+| `logger.py` | `TraceIdFilter`로 모든 로그 레코드에 `trace_id` 필드 자동 주입 |
+| `opentelemetry.py` | trace_id가 포함된 애플리케이션 로그를 Grafana Cloud로 전송 |
 | `exceptions.py` | 모든 예외 핸들러의 에러 로그에 기록 |
 
 ### 통합 응답 규격 (CommonResponse)
