@@ -316,7 +316,9 @@ class ChatService:
         if provider not in self.models:
             logger.error(f"지원하지 않는 LLM 제공자입니다: {provider}")
             raise ValueError(f"지원하지 않는 LLM 제공자입니다: {provider}")
-        model = self.models[provider]
+        model = self.models[provider].with_config(
+            configurable={"model": payload.llm_config.model}
+        )
 
         # 키워드 추출 진행
         response = await model.ainvoke(MANUAL_KEYWORD_EXTRACTION_PROMPT.format(question=payload.message))

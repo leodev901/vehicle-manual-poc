@@ -57,6 +57,7 @@ def create_chat_models():
             model=getattr(settings,"OPENAI_MODEL","gpt-5-nano"),
             model_provider="openai",
             api_key=settings.OPENAI_API_KEY,
+            configurable_fields=("model",)
             # temperature=0.7,
             # max_tokens=1000,
             # timeout=30,
@@ -68,6 +69,7 @@ def create_chat_models():
             model=getattr(settings,"GEMINI_MODEL","gemini-2.5-flash-lite"),
             model_provider="google_genai",
             api_key=settings.GEMINI_API_KEY,
+            configurable_fields=("model",)
             # temperature=0.7,
             # max_tokens=1000,
             # timeout=30,
@@ -79,6 +81,7 @@ def create_chat_models():
             model=getattr(settings,"XAI_MODEL","grok-beta"),
             model_provider="xai",
             api_key=settings.XAI_API_KEY,
+            configurable_fields=("model",)
             # temperature=0.7,
             # max_tokens=1000,
             # timeout=30,
