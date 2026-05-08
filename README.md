@@ -2,7 +2,7 @@
 
 > **차량 매뉴얼을 AI가 읽고, 사용자의 질문에 정확하게 답변하는 RAG 기반 인텔리전트 챗봇 서비스입니다.**
 
-> **현재 상태**: ✅ RAG 파이프라인 완성 (Inference Server를 Hugging Face Spaces에 MSA로 분리 배포 완료, 하이브리드 벡터+FTS 검색 연동 완료, SSE 스트리밍 챗봇 엔드포인트 운영 중) | ✅ 프론트엔드 완성 (Next.js App Router 기반 모바일-퍼스트 챗봇 UI, SSE 스트리밍 연동, 차량 Cascade 선택 위젯 구현)
+> **현재 상태**: ✅ RAG 파이프라인 완성 (Inference Server를 Hugging Face Spaces에 MSA로 분리 배포 완료, 하이브리드 벡터+FTS 검색 연동 완료, SSE 스트리밍 챗봇 엔드포인트 운영 중) | ✅ 프론트엔드 완성 (Next.js App Router 기반 모바일-퍼스트 챗봇 UI, SSE 스트리밍 연동, 차량 Cascade 선택 위젯 구현) | ✅ 백엔드 운영 고도화 진행 (요청 단위 LLM 모델 선택, Grok(xAI) 모델 확장, 공통 httpx AsyncClient 커넥션 풀, OpenTelemetry 기반 Grafana 로그 전송)
 
 ---
 
@@ -25,6 +25,8 @@
 | 🚗 **차종별 개인화 검색** | 현대, 기아 등 브랜드 → 라인업 → 특정 모델(아이오닉5, 투싼 등)을 선택하면 **해당 차종 매뉴얼에서만** 답변을 찾습니다. |
 | 🔬 **하이브리드 RAG 검색** | 의미 기반(Vector Semantic Search)과 키워드 일치(Full-Text Search)를 **수학적으로 혼합**하여 어떤 질문에도 정확도 높은 문서를 검색합니다. |
 | 🧩 **MSA 마이크로서비스 아키텍처** | 무거운 AI 추론(임베딩)을 독립 서버로 분리하여, 메인 서버는 가볍고 빠르게 유지하면서 각 서비스를 독립적으로 확장 가능합니다. |
+| 🧠 **요청별 LLM 모델 선택** | OpenAI, Gemini, Grok(xAI) 모델을 Registry 패턴으로 등록하고, 요청의 `llm_config`에 따라 실행 모델을 동적으로 선택합니다. |
+| 📈 **운영 관측성 강화** | LangSmith로 LLM 체인을 추적하고, OpenTelemetry OTLP 로그를 Grafana Cloud로 전송하여 장애 분석과 운영 가시성을 높입니다. |
 
 ---
 
@@ -77,8 +79,8 @@
 |------|------|
 | **Backend** | FastAPI, Gunicorn + Uvicorn Worker, Pydantic, uvloop |
 | **Database** | Supabase (PostgreSQL + pgvector) |
-| **LLM / RAG** | LangChain LCEL, OpenAI, Google GenAI (멀티 모델 지원) |
-| **Observability** | LangSmith (LLM 트레이싱, 모델별 비용/지연시간 분석, Prompt 버전 관리) |
+| **LLM / RAG** | LangChain LCEL, OpenAI, Google GenAI, xAI Grok (멀티 모델 지원) |
+| **Observability** | LangSmith (LLM 트레이싱, 모델별 비용/지연시간 분석, Prompt 버전 관리), OpenTelemetry, Grafana Cloud OTLP |
 | **Frontend** | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, lucide-react |
 | **Infra** | Docker (Multi-stage), Docker Compose, Helm, Kubernetes (HPA, Probes), GitHub Actions CI |
 | **Data Pipeline** | PyMuPDF, Sentence-Transformers, Pandas |
@@ -105,11 +107,14 @@ vehicle-manual-poc/
 │   │   │   └── routes.py       # 라우터 통합 등록
 │   │   ├── base/               # 공통 기반 모듈
 │   │   │   ├── exceptions.py   # 전역 예외 처리 핸들러
+│   │   │   ├── http_client.py   # 🆕 공통 httpx AsyncClient 커넥션 풀 + 외부 호출 로깅
 │   │   │   ├── logger.py       # 로깅 설정 (TimedRotatingFileHandler)
-│   │   │   └── middleware.py   # 요청/응답 로깅 미들웨어
+│   │   │   ├── middleware.py   # 요청/응답 로깅 미들웨어
+│   │   │   └── opentelemtry.py # 🆕 OpenTelemetry OTLP 로그 전송 설정 (Grafana Cloud)
 │   │   ├── core/               # 핵심 설정
 │   │   │   ├── config.py       # 환경 변수 관리 (pydantic-settings, HF_TOKEN 포함)
 │   │   │   ├── database.py     # Supabase 클라이언트 생성
+│   │   │   ├── llm.py          # OpenAI/Gemini/Grok 모델 Registry 초기화
 │   │   │   └── dependencies.py # FastAPI 의존성 주입 (DI)
 │   │   ├── prompts/            # LLM 프롬프트 템플릿 분리 관리
 │   │   │   └── chat_prompts.py # 키워드 추출 / RAG 응답 생성 프롬프트
@@ -205,6 +210,14 @@ Client Response ← CommonResponse 규격 또는 실시간 StreamingResponse(SSE
 * **Singleton 객체 관리**: 무거운 DB/LLM 연결 객체는 `main.py`의 `lifespan` 시점에서 단 1회만 비동기로 생성(`app.state`에 저장)됩니다.
 * **Class `__init__` DI**: 라우터에서 함수 파라미터로 무분별하게 객체를 넘기는 패턴(Parameter Explosion)을 방지하고, Service나 Repository 클래스 생성 시점에 `Depends()`를 통해 필요한 컴포넌트만 깔끔하게 주입받습니다.
 
+### 공통 HTTP Client 패턴 (Connection Pool)
+외부 임베딩 서버처럼 반복 호출되는 API는 요청마다 새 연결을 만들면 TCP 연결 생성 비용이 누적되고, 장애 상황에서 연결 수가 급증할 수 있습니다. 이를 막기 위해 `backend/app/base/http_client.py`에 **서버 전역 공통 `httpx.AsyncClient`**를 분리했습니다.
+
+* **Connection Pool 재사용**: `httpx.AsyncClient`를 한 번 생성한 뒤 재사용하여 Hugging Face 임베딩 서버 호출의 연결 생성 비용을 줄입니다.
+* **Double-Checked Locking**: 동시에 여러 요청이 최초 client 생성을 시도해도 `asyncio.Lock`으로 단 1개 인스턴스만 생성되도록 보호합니다.
+* **Timeout / Limits 중앙화**: connect, read, write, pool timeout과 최대 연결 수를 한 곳에서 관리해 외부 API 장애가 백엔드 전체로 번지는 것을 줄입니다.
+* **외부 호출 로깅 표준화**: httpx `event_hooks`로 요청 URL, 응답 상태 코드, 소요 시간을 공통 로그로 남겨 장애 분석 단서를 확보합니다.
+
 ### 실시간 응답 스트리밍 & 예외 가딩 (SSE Architecture)
 답변 생성이 오래 걸리는 LLM의 단점을 극복하고 뛰어난 UX를 제공하기 위해 **SSE(Server-Sent Events)** 방식을 채택하고, 스트리밍 중 예외를 안전하게 가로채는 **Safe-Guard 아키텍처**를 구축했습니다.
 
@@ -235,9 +248,12 @@ Client Response ← CommonResponse 규격 또는 실시간 StreamingResponse(SSE
 특정 LLM 벤더(OpenAI, Google)에 귀속되지 않는 범용적 챗봇을 설계했습니다.
 
 * **Registry 패턴 지원**: `core/llm.py`에서 등록 가능한 여러 모델(Raw SDK 및 LangChain ChatModel)을 딕셔너리 형태로 띄워 두고 DI로 주입받습니다.
+* **Grok(xAI) 확장**: OpenAI, Gemini에 더해 `langchain-xai` 기반 Grok 모델을 추가하여 LLM 벤더 선택지를 넓혔습니다.
+* **요청별 모델 선택**: `ChatRequest.llm_config.provider/model` 값으로 실행할 provider와 model을 선택할 수 있어, 동일한 RAG 파이프라인에서 모델별 품질과 응답 속도를 비교할 수 있습니다.
 * **투트랙 전략 (`chat_service.py`)**:
   * `chat()`: 각 제조사의 고유 파이썬 SDK 문법을 기반으로 분기(`if/elif`)하여 처리하는 로직
   * `chat_langchain()`: LangChain의 **LCEL(`prompt | llm | parser`)** 문법을 활용, 제조사 인터페이스 차이를 흡수하고 단일화된 파이프라인으로 처리.
+  * `chat_stream_advanced()`: LangChain 표준 `init_chat_model`과 `with_config(configurable=...)` 패턴을 활용해 런타임 모델 선택과 SSE 스트리밍을 결합한 고도화 엔드포인트.
 
 ### LLM Observability (LangSmith 연동)
 LLM 애플리케이션의 블랙박스를 열어 운영 가시성을 확보하기 위해 **LangSmith**를 연동합니다.
@@ -255,6 +271,14 @@ LLM 애플리케이션의 블랙박스를 열어 운영 가시성을 확보하�
 | **품질 자동화** | Dataset + Evaluator로 프롬프트 변경 시 자동 품질 점수 산출 |
 
 > 📚 상세 실습 가이드: [`docs_study/learning_step4_langsmith.md`](./docs_study/learning_step4_langsmith.md)
+
+### OpenTelemetry + Grafana 로그 관측성
+LangSmith가 LLM 체인 내부를 보여준다면, OpenTelemetry는 백엔드 애플리케이션의 운영 로그를 표준 방식으로 외부 관측 플랫폼에 전달합니다.
+
+* **OTLP HTTP Exporter**: `backend/app/base/opentelemtry.py`에서 Python 로그를 OpenTelemetry 로그 레코드로 변환하고, Grafana Cloud OTLP endpoint로 전송합니다.
+* **Grafana Cloud 인증**: `GRAFANA_INSTANCE_ID`와 `GRAFANA_API_TOKEN`을 Basic 인증 헤더로 구성하여 Grafana OTLP Gateway에 연결합니다.
+* **서비스 메타데이터 부여**: `service.name`, `service.version`, `service.instance.id`, `deployment.environment`를 Resource로 기록해 환경별 로그 필터링이 가능합니다.
+* **Lifespan 기반 초기화/종료**: FastAPI `lifespan`에서 시작 시 `setup_opentelemetry()`, 종료 시 `shutdown_opentelemetry()`를 호출하여 exporter 자원을 안전하게 정리합니다.
 
 ### 전역 예외 처리 (Global Exception Handler)
 `base/exceptions.py`에서 모든 예외를 중앙 관리하여, 각 계층(Router/Service/Repo)에서 `try-except` 없이 코드를 작성할 수 있습니다.
@@ -321,11 +345,17 @@ cp .env.example .env
 | `OPENAI_MODEL` | 사용할 OpenAI 모델명 | `gpt-4o-mini` |
 | `GEMINI_API_KEY` | Google Gemini API Key | `AIza...` |
 | `GEMINI_MODEL` | 사용할 Gemini 모델명 | `gemini-2.0-flash` |
+| `XAI_API_KEY` | xAI Grok API Key | `xai-...` |
+| `XAI_MODEL` | 사용할 Grok 모델명 | `grok-beta` |
 | `HF_INFERENCE_URL` | HuggingFace 임베딩 서버 URL | `https://...hf.space/api/v1/embed` |
 | `HF_TOKEN` | HuggingFace API Token | `hf_...` |
 | `LANGCHAIN_TRACING_V2` | LangSmith 트레이싱 활성화 | `true` / `false` |
 | `LANGCHAIN_API_KEY` | LangSmith API Key | `ls-...` |
 | `LANGCHAIN_PROJECT` | LangSmith 프로젝트명 | `vehicle-manual-poc` |
+| `ENABLE_OTEL_DIRECT` | OpenTelemetry 직접 전송 활성화 | `true` / `false` |
+| `GRAFANA_ENDPOINT` | Grafana Cloud OTLP 로그 endpoint | `https://.../otlp/v1/logs` |
+| `GRAFANA_INSTANCE_ID` | Grafana Cloud instance/account ID | `1556283` |
+| `GRAFANA_API_TOKEN` | Grafana Cloud API Token | `glc_...` |
 
 > **LangSmith 설정**: `LANGCHAIN_TRACING_V2=true`로 설정하면 모든 LLM 호출이 자동으로 LangSmith 대시보드에 기록됩니다. `APP_ENV` 값에 따라 LangSmith 프로젝트가 `vehicle-manual-poc-dev` / `vehicle-manual-poc-prd` 등으로 자동 분리되어 환경별 오염이 방지됩니다. API Key는 [smith.langchain.com](https://smith.langchain.com) 에서 발급합니다.
 
@@ -352,6 +382,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8009 --reload
 | `POST` | `/api/v1/chat` | 챗봇 질의 (Raw SDK 기반 멀티 모델 단건 응답) |
 | `POST` | `/api/v1/chat/langchain` | 챗봇 질의 (LangChain LCEL 기반 단일 파이프라인 단건 응답) |
 | `POST` | `/api/v1/chat/stream` | 실시간 챗봇 질의 (LangChain LCEL 기반 SSE 스트리밍 응답) |
+| `POST` | `/api/v1/chat/stream/advanced` | 🆕 요청별 LLM 모델 선택 + 공통 HTTP Client 기반 고도화 SSE 스트리밍 응답 |
 | `GET` | `/api/v1/manual/brands` | 🆕 차량 브랜드 목록 조회 |
 | `GET` | `/api/v1/manual/lineups?brand_id=HD` | 🆕 브랜드별 라인업 목록 조회 |
 | `GET` | `/api/v1/manual/models?lineup_id=LX3` | 🆕 라인업별 차량 모델 목록 조회 |

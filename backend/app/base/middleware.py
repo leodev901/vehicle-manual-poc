@@ -6,6 +6,7 @@ import uuid
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.base.context import bind_trace_id, reset_trace_id
 from app.base.logger import logger
 
 # 로깅 제외 경로
@@ -43,6 +44,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # 추적을 위한 trace_id
         trace_id = request.headers.get("x-trace-id") or str(uuid.uuid4())
         request.state.trace_id = trace_id
+        token = bind_trace_id(trace_id)
 
         # ===============================================================
         # Request 요청 로깅
@@ -66,6 +68,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             status_code = response.status_code if response else "error"
 
             logger.info(f"Response-[{trace_id}] {request.method} {request.url.path} {status_code} {duration:.2f}ms")
+            reset_trace_id(token)
 
         
 

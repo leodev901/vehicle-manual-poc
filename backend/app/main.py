@@ -7,7 +7,8 @@ from app.core.supabase import create_supabase_client
 from app.core.llm import create_llm_clients, create_langchain_clients, create_chat_models
 from app.base.exceptions import register_exception_handlers
 from app.base.middleware import RequestLoggingMiddleware
-from app.base.opentelemtry import setup_opentelemetry, shutdown_opentelemetry
+from app.base.opentelemetry import setup_opentelemetry, shutdown_opentelemetry
+from app.base.http_client import httpx_client_close
 from app.core.config import settings
 
 
@@ -56,8 +57,13 @@ async def life_span(app: FastAPI) -> None:
     # database engine 종료
     await dispose_engine()
     
+    # http client 종료
+    await httpx_client_close()
+    
     # Opentelemtry-Grafana 연결 종료
     shutdown_opentelemetry()
+
+    
 
 
 
