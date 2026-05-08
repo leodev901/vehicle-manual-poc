@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     GEMINI_API_KEY:str
     GEMINI_MODEL:str
 
+    XAI_API_KEY:str
+    XAI_MODEL:str
+
     #HuggingFace
     HF_INFERENCE_URL:str = "https://leodev901-inference-server.hf.space/api/v1/embed"
     HF_TOKEN:str

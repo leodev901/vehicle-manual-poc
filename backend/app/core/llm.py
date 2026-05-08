@@ -61,7 +61,7 @@ def create_chat_models():
             # max_tokens=1000,
             # timeout=30,
         )
-        logger.info("LangChain OpenAI Client Created")
+        logger.info("LangChain OpenAI Chat Models Created")
     
     if getattr(settings,"GEMINI_API_KEY",None):
         models["gemini"] = init_chat_model(
@@ -72,6 +72,17 @@ def create_chat_models():
             # max_tokens=1000,
             # timeout=30,
         )
-        logger.info("LangChain Gemini Client Created")
+        logger.info("LangChain GEMINI Chat Models Created")
+
+    if getattr(settings,"XAI_API_KEY",None):
+        models["grok"] = init_chat_model(
+            model=getattr(settings,"XAI_MODEL","grok-beta"),
+            model_provider="xai",
+            api_key=settings.XAI_API_KEY,
+            # temperature=0.7,
+            # max_tokens=1000,
+            # timeout=30,
+        )
+        logger.info("LangChain Grok Chat Models Created")
 
     return models
