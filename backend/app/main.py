@@ -7,7 +7,9 @@ from app.core.supabase import create_supabase_client
 from app.core.llm import create_llm_clients, create_langchain_clients, create_chat_models
 from app.base.exceptions import register_exception_handlers
 from app.base.middleware import RequestLoggingMiddleware
+from app.base.opentelemtry import setup_opentelemetry, shutdown_opentelemetry
 from app.core.config import settings
+
 
 # ============================================================
 # uvloop: Python 기본 asyncio 이벤트 루프를 C 기반(libuv)으로 교체
@@ -45,11 +47,17 @@ async def life_span(app: FastAPI) -> None:
     # database engine 생성 - 싱글톤
     await create_engine()
 
+    # Opentelemtry-Grafana 연결
+    setup_opentelemetry()
+
     yield
 
     print("Shutting down...")
     # database engine 종료
     await dispose_engine()
+    
+    # Opentelemtry-Grafana 연결 종료
+    shutdown_opentelemetry()
 
 
 
