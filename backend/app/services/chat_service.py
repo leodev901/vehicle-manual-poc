@@ -11,13 +11,14 @@ from app.repositories.manual.supabase_repository import ManualSupabaseRepository
 from app.prompts.chat_prompts import MANUAL_KEYWORD_EXTRACTION_PROMPT, RAG_CHAT_PROMPT, MOCK_CONTEXT
 from app.core.config import settings
 
-
+from app.base.logger import logger
 
 class ChatService:
 
     PROVIDER = [
         "openai",
-        "gemini"
+        "gemini",
+        "grok",
     ]
 
     def __init__(
@@ -31,7 +32,7 @@ class ChatService:
         self.llm = llm
         self.langchain = langchain
         self.models = models
-        
+
 
     # 특이사항
     # "OPENAI" -> langchain 1.0 version으로 마이그레이션 
@@ -138,7 +139,7 @@ class ChatService:
             "response":data
         }
     
-    async def chat_langchain(self,request: ChatRequest):
+    async def chat_langchain(self, request: ChatRequest):
         """
         LangChain을 사용하여 Chat을 workflow를 수행합니다.
         """
@@ -211,13 +212,16 @@ class ChatService:
         스트리밍 응답을 위한 제너레이터 함수
         """
 
-        yield 'data: {"status": "processing", "message": "사용자 질의에서 키워드를 추출하고 있습니다."}\n\n'
+        yield 'data: {"status": "processing", "message": "AI 모델을 로딩 중입니다..."}\n\n'
+        
         
         # 선택된 모델 인스턴스 가져오기
         provider = payload.llm_config.provider.lower() or "openai"
         if provider not in self.PROVIDER:
             raise ValueError(f"지원하지 않는 LLM 제공자입니다: {provider}")
         active_llm = self.langchain.get(provider)
+
+        yield 'data: {"status": "processing", "message": "사용자 질의에서 키워드를 추출하고 있습니다..."}\n\n'
 
         # 출력 파서 생성
         output_parser = StrOutputParser()
@@ -233,7 +237,6 @@ class ChatService:
 
         yield 'data: {"status": "processing", "message": "임베딩 DB에서 관련 문서를 검색 중입니다..."}\n\n'
 
-        #TODO: RAG 검색 
         # 임베딩 서버 호출
         async with httpx.AsyncClient(timeout=60.0) as client:
             data = {
@@ -300,4 +303,85 @@ class ChatService:
         
 
 
+    async def chat_stream_advanced(self, payload:ChatRequest):
+        """
+        스트리밍 응답을 위한 제너레이터 함수
+        lanchain core 1.0의 표준 기능을 활용합니다.
+        """
+
+        yield 'data: {"status": "processing", "message": "AI 모델을 로딩 중입니다..."}\n\n'
+        
+        # 선택된 모델 인스턴스 가져오기
+        provider = payload.llm_config.provider.lower() or "grok"
+        if provider not in self.models:
+            logger.error(f"지원하지 않는 LLM 제공자입니다: {provider}")
+            raise ValueError(f"지원하지 않는 LLM 제공자입니다: {provider}")
+        model = self.models[provider]
+
+        # 키워드 추출 진행
+        response = await model.ainvoke(MANUAL_KEYWORD_EXTRACTION_PROMPT.format(question=payload.message))
+        keywords = response.content.strip()
+
+        print(f"keywords: {keywords}")
+
+
+        yield 'data: {"status": "processing", "message": "임베딩 DB에서 관련 문서를 검색 중입니다..."}\n\n'
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            data = {
+                "text": keywords,
+            }
+            response = await client.post(
+                # "http://localhost:8010/api/v1/embed",
+                settings.HF_INFERENCE_URL,
+                headers={
+                    "Authorization": f"Bearer {settings.HF_TOKEN}"
+                },
+                json=data
+            )
+            response.raise_for_status() 
+            query_vector = response.json()["embedding"]
+            if not query_vector:
+                raise ValueError("임베딩 서버에서 벡터를 생성하지 못했습니다.")
+            
+        # Supabase RAG 검색
+        repo = ManualSupabaseRepository(self.supabase)
+        results = await repo.search_manual_rag(
+            model_id=payload.model_id,
+            query=keywords,
+            query_vector=query_vector,
+            top_k=4
+        )
+        for i, item in enumerate(results):
+            print(f"\n[{i+1}위] 📄 {item['heading']} (p.{item['page_num']})")
+            # 본문이 너무 길면 200자까지만 보여주기
+            preview = item['content'][:200].replace("\n", " ") + "..."
+            print(f"   내용: {preview}")
+
+        # 검색 결과에서 문서 텍스트만 추출
+        context = "\n\n".join([f"[출처: {doc['heading']} (p.{doc['page_num']})]\n{doc['content']}" for doc in results])
+
+        print(f"context:\n {context}")
+
+
+        yield 'data: {"status": "generating", "message": "답변을 생성 중입니다..."}\n\n'
+
+        rag_chain = RAG_CHAT_PROMPT | model | StrOutputParser()
+        answer = ""
+
+        ## TODO 최종 답변 질문하여 SSE로 응답(yield)
+        # astream()을 쓰면 응답이 '제너레이터' 형태로 변환
+        async for chunk in rag_chain.astream({
+            "context":context,
+            "question":payload.message
+        }): 
+            answer += chunk
+            yield f'data: {json.dumps(chunk, ensure_ascii=False)}\n\n'
+        print(f"answer: {answer}")
+
+        # 스트리밍 종료
+        yield 'data: [DONE]\n\n'
+
+
+        
         

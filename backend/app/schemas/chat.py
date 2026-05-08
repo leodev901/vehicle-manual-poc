@@ -1,8 +1,8 @@
 from pydantic import BaseModel, Field
 
 class LlmConfig(BaseModel):
-    provider: str | None = Field(default=None, description="Provider", example="openai")
-    model:str | None = Field(default=None, description="Model", example="gpt-5-nano")
+    provider: str | None = Field(default=None, description="Provider", example="gemini")
+    model:str | None = Field(default=None, description="Model", example="gemini-2.0-flash")
 
 class ChatRequest(BaseModel):
     session_id: str | None = Field(default=None, description="Session ID", example="session-1234567890") 
