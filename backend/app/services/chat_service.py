@@ -11,6 +11,7 @@ from app.repositories.manual.supabase_repository import ManualSupabaseRepository
 from app.prompts.chat_prompts import MANUAL_KEYWORD_EXTRACTION_PROMPT, RAG_CHAT_PROMPT, MOCK_CONTEXT
 from app.core.config import settings
 
+from app.base.http_client import get_httpx_client
 from app.base.logger import logger
 
 class ChatService:
@@ -329,22 +330,27 @@ class ChatService:
 
         yield 'data: {"status": "processing", "message": "임베딩 DB에서 관련 문서를 검색 중입니다..."}\n\n'
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            data = {
-                "text": keywords,
-            }
-            response = await client.post(
-                # "http://localhost:8010/api/v1/embed",
-                settings.HF_INFERENCE_URL,
-                headers={
-                    "Authorization": f"Bearer {settings.HF_TOKEN}"
-                },
-                json=data
-            )
-            response.raise_for_status() 
-            query_vector = response.json()["embedding"]
-            if not query_vector:
-                raise ValueError("임베딩 서버에서 벡터를 생성하지 못했습니다.")
+        
+        # 임베딩 서버 외부 HTTP 호출
+        client = await get_httpx_client()
+        
+        data = {
+            "text": keywords,
+        }
+        response = await client.post(
+            # "http://localhost:8010/api/v1/embed",
+            settings.HF_INFERENCE_URL,
+            headers={
+                "Authorization": f"Bearer {settings.HF_TOKEN}"
+            },
+            json=data
+        )
+        response.raise_for_status() 
+        query_vector = response.json()["embedding"]
+        if not query_vector:
+            raise ValueError("임베딩 서버에서 벡터를 생성하지 못했습니다.")
+        
+        
             
         # Supabase RAG 검색
         repo = ManualSupabaseRepository(self.supabase)
