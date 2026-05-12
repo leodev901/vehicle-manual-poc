@@ -372,14 +372,7 @@ class ChatService:
         
         else: 
             # 임베딩 서버 외부 HTTP 호출
-            # query_vector = await embedding_client.get_embedding(keywords)
-            # retry 활용
-            query_vector = await retry_async(
-                "hf_embedding",
-                lambda: embedding_client.get_embedding(keywords),
-                max_attempts=3,
-                base_delay_seconds=0.5
-            )
+            query_vector = await embedding_client.get_embedding(keywords)
             # hf 호출 임베딩 결과 캐싱하기 
             await memory_cache.set_cache(keywords, query_vector)
         

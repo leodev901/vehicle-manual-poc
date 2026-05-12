@@ -54,9 +54,10 @@ FastAPI 기반의 어플리케이션을 넘어서, 수만 명의 트래픽을 �
    - [x] **Retry 유틸리티:** 외부 HTTP 호출용 `retry_async()` 및 `RetryExhaustedError` 작성 (✅ **진행 완료**)
    - [x] **EmbeddingClient 분리:** Hugging Face 임베딩 호출을 별도 client로 분리 (✅ **진행 완료**)
    - [x] **In-memory 임베딩 캐시:** Redis 도입 전 학습용 TTL cache로 임베딩 벡터 재사용 구조 적용 (✅ **진행 완료**)
-   - [ ] **Circuit Breaker:** Hugging Face 임베딩 서버 반복 장애 시 빠른 실패 처리
+   - [x] **Circuit Breaker:** `EmbeddingClient` 내부에 module-level singleton 기반 Circuit Breaker를 적용하여 Hugging Face 임베딩 서버 반복 장애 시 빠른 실패 처리 기반 마련 (✅ **진행 완료**)
    - [ ] **Provider Fallback:** 키워드 추출/최종 답변 생성 시작 전 provider 우회 정책 설계
    - [ ] **Redis Semantic Cache:** 분산 환경에서도 공유 가능한 캐시 저장소로 확장
+   - [ ] **장애 검증:** HF URL 오류/timeout 상황에서 retry 횟수, circuit open, SSE error 응답을 실제 로그로 검증
    > 📖 학습 노트: `docs_study/learning_step4_2_external_api_resilience.md`
 
 ## ✅ 5단계: 관측성 (Observability) — 완료
@@ -92,8 +93,9 @@ LLM 애플리케이션은 일반 API 서버보다 장애 원인을 찾기 어렵
    - **실습:** `Celery`, `Redis Queues`, `RabbitMQ`를 도입하여 RAG 태스크를 워커 노드로 분리하고, FastAPI는 상태(Status) 알림만 수행하게 만들기.
 
 2. **세션 영속화 및 컨텍스트 관리 (State Management)**
-   - **문제점:** 현재 AI가 이전 채팅을 전혀 기억하지 못함. 서버(Pod)가 다중화되면 메모리에 세션 상태를 저장할 수 없음.
-   - **실습:** `session_id` 기반으로 대화 로그를 `Redis` 혹은 `Supabase` 에 영속화. 나아가 `LangGraph`의 Checkpointer를 활용하여 멀티 에이전트 워크플로우 통제.
+   - [x] **예열 실습:** `session_id` 기반 in-memory 대화 히스토리 구조 작성 및 키워드 추출/RAG 답변 프롬프트에 history context 연결 (✅ **진행 완료**)
+   - [ ] **영속화:** 서버 재시작/다중 Pod 환경에서도 유지되도록 대화 로그를 `Redis` 혹은 `Supabase`에 저장
+   - [ ] **워크플로우 확장:** `LangGraph` Checkpointer를 활용하여 멀티 에이전트 워크플로우와 대화 상태를 통제
 
 3. **RAG 성능의 정량 평가 파이프라인 (AI Evaluation)**
    - **문제점:** 답변의 품질을 눈대중으로 파악하고 있음. (할루시네이션, 정확도 등)

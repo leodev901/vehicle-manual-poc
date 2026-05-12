@@ -3,6 +3,8 @@ import httpx
 from app.base.http_client import get_httpx_client
 from app.base.logger import logger
 from app.core.config import settings
+from app.utils.circuit_breaker import CircuitBreaker
+from app.utils.retry import retry_async
 
 
 class EmbeddingClient:
@@ -14,7 +16,27 @@ class EmbeddingClient:
         self.url = settings.HF_INFERENCE_URL
         self.token = settings.HF_TOKEN
 
+        # CircuitBreaker는 실패 횟수를 누적해 사용해야 하므로 객체에 선언
+        self.breaker = CircuitBreaker(
+            name="hf_embedding",
+            failure_threshold=5,
+            recovery_timeout_seconds=30.0,
+        )
+
+
+
     async def get_embedding(self, text: str) -> list[float]:
+        """서킷 브레이커 call"""
+        return await self.breaker.call(
+            lambda: retry_async(
+                "hf_embedding",
+                lambda: self._request_embedding(text),
+                max_attempts=3,
+                base_delay_seconds=0.5
+            )
+        )
+
+    async def _request_embedding(self, text: str) -> list[float]:
         """
         텍스트를 벡터로 변환합니다.
         """
@@ -58,4 +80,6 @@ class EmbeddingClient:
             logger.error(f"Unexpected error during embedding: {str(e)}")
             raise
 
+# module-level singleton
+# 같은 프로세스 안에서는 이 객체 하나를 계속 재사용합니다.
 embedding_client = EmbeddingClient()
