@@ -109,7 +109,7 @@ env:
   opentelemetry:
     enabled: true
     endpoint: "https://otlp-gateway-prod-ap-northeast-0.grafana.net/otlp/v1/logs"
-    instanceId: 1556283
+    instanceId: "1556283"
     apiToken: "github-secret-opentelemetry-api-token"
   
 
