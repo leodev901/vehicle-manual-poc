@@ -39,8 +39,31 @@ MANUAL_KEYWORD_EXTRACTION_PROMPT = PromptTemplate.from_template("""
 
 [사용자 질문]
 {question}
+""")
 
-결과:
+
+MANUAL_KEYWORD_EXTRACTION_WITH_HISTORY_PROMPT = PromptTemplate.from_template("""
+사용자는 차량 관련 질문을 합니다.
+당신은 현재 사용자 질문으로부터 차량 매뉴얼 RAG의 검색에 인용할 핵심 대상과 목적을 나타내는 '단일 명사구'만 추출하세요.
+이전 사용자 질문은 현재 질문이 과거 맥락 의존 표현을 포함할 때만 참고하세요.
+현재 질문만으로 의미가 명확하면 현재 질문을 우선하세요.
+
+[요구사항]
+1. 문장의 핵심 목적어나 주어에 해당하는 명사구(Noun Phrase) 1개만 도출하세요.
+2. '알려줘', '어떻게 해', '무엇인가요' 등의 서술어와 불필요한 감탄사, 조사는 모두 제거하세요.
+3. 어떠한 부가 설명도 없이 최종 추출된 명사구 결과만 출력하세요.
+4. 답변은 한국어로 하세요
+
+[예시]
+질문: "하이브리드 모델 엔진오일 교체 주기가 어떻게 돼?" -> 결과: "엔진오일 교체 주기"
+질문: "스마트 크루즈 컨트롤 속도 조절 방법 알려줘" -> 결과: "스마트 크루즈 컨트롤 속도 조절"
+질문: "대시보드에 빨간색 느낌표 경고등이 떴어" -> 결과: "빨간색 느낌표 경고등"
+
+[이전 사용자 질문]
+{history}
+[현재 사용자 질문]
+{question}
+
 """)
 
 
@@ -54,6 +77,16 @@ RAG_CHAT_PROMPT = ChatPromptTemplate.from_messages([
     ("human", "{question}"),
 ])
 
+
+RAG_CHAT_WITH_HISTORY_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", 
+     "당신은 차량 매뉴얼을 안내하는 전문 AI 어시스턴트입니다.\n"
+     "아래 검색된 매뉴얼 내용을 기반으로만 답변하세요.\n"
+     "매뉴얼에 없는 내용은 '매뉴얼에서 확인되지 않는 내용입니다'라고 답변하세요."),
+    ("system", "이전 대화:\n{history}"),
+    ("system", "검색된 매뉴얼:\n{context}"),
+    ("human", "{question}"),
+])
 
 MOCK_CONTEXT = """[엔진오일 교환 주기 안내]
 

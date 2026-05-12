@@ -8,7 +8,7 @@ from langsmith import traceable
 from app.core.dependencies import get_supabase_client, get_llm_client, get_langchain_client, get_chat_models
 from app.schemas.chat import ChatRequest
 from app.repositories.manual.supabase_repository import ManualSupabaseRepository
-from app.prompts.chat_prompts import MANUAL_KEYWORD_EXTRACTION_PROMPT, RAG_CHAT_PROMPT, MOCK_CONTEXT
+from app.prompts.chat_prompts import MANUAL_KEYWORD_EXTRACTION_PROMPT, RAG_CHAT_PROMPT, MOCK_CONTEXT, MANUAL_KEYWORD_EXTRACTION_WITH_HISTORY_PROMPT, RAG_CHAT_WITH_HISTORY_PROMPT
 from app.core.config import settings
 
 from app.base.http_client import get_httpx_client
@@ -16,6 +16,7 @@ from app.base.embedding_client import embedding_client
 from app.base.logger import logger
 from app.utils.retry import retry_async
 from app.utils.in_memory_cache import memory_cache
+from app.utils.session_memory import session_memory, ChatMessage
 
 
 
@@ -310,6 +311,17 @@ class ChatService:
         yield 'data: [DONE]\n\n'
         
 
+    def _build_question_history(self, history:list[ChatMessage])->str:
+        if history is None or len(history) == 0:
+            return ""
+        return "\n\n".join( message["content"] for message in history if message["role"] == "human")
+    
+    def _build_chat_history(self, history:list[ChatMessage])->str:
+        if history is None or len(history) == 0:
+            return ""
+        return "\n\n".join( f'{message["role"]}:{message["content"]}' for message in history )
+    
+
 
     async def chat_stream_advanced(self, payload:ChatRequest):
         """
@@ -328,15 +340,24 @@ class ChatService:
             configurable={"model": payload.llm_config.model}
         )
 
+        # 대회 히스토리 가져오기 
+        session_id = payload.session_id or "anonymous"
+        history = session_memory.get_memory(session_id)
+        question_history = self._build_question_history(history) # 키워드 추출에 사용
+        chat_history = self._build_chat_history(history) # 최종 답변 생성에 사용 
+
         # 키워드 추출 진행
         # response = await model.ainvoke(MANUAL_KEYWORD_EXTRACTION_PROMPT.format(question=payload.message))
         response = await retry_async(
             "llm_keyword_extract",
-            lambda: model.ainvoke(MANUAL_KEYWORD_EXTRACTION_PROMPT.format(question=payload.message)),
+            # lambda: model.ainvoke(MANUAL_KEYWORD_EXTRACTION_PROMPT.format(question=payload.message)),
+            lambda: model.ainvoke(MANUAL_KEYWORD_EXTRACTION_WITH_HISTORY_PROMPT.format(question=payload.message, history=question_history)),
             max_attempts=3,
             base_delay_seconds=0.5
         )
         keywords = response.content.strip()
+
+        
 
         print(f"keywords: {keywords}")
 
@@ -385,18 +406,26 @@ class ChatService:
 
         yield 'data: {"status": "generating", "message": "답변을 생성 중입니다..."}\n\n'
 
-        rag_chain = RAG_CHAT_PROMPT | model | StrOutputParser()
+        
+        rag_chain = RAG_CHAT_WITH_HISTORY_PROMPT | model | StrOutputParser()
         answer = ""
+        
+        # 사용자 질의 히스토리 추가 
+        session_memory.add_memory(session_id, role="human", content=payload.message)
 
         ## TODO 최종 답변 질문하여 SSE로 응답(yield)
         # astream()을 쓰면 응답이 '제너레이터' 형태로 변환
         async for chunk in rag_chain.astream({
             "context":context,
+            "history":chat_history,
             "question":payload.message
         }): 
             answer += chunk
             yield f'data: {json.dumps(chunk, ensure_ascii=False)}\n\n'
         print(f"answer: {answer}")
+
+        # LLM 답변 히스토리 추가 
+        session_memory.add_memory(session_id, role="assistant", content=answer)
 
         # 스트리밍 종료
         yield 'data: [DONE]\n\n'
