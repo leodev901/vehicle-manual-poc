@@ -2,7 +2,7 @@
 
 > **차량 매뉴얼을 AI가 읽고, 사용자의 질문에 정확하게 답변하는 RAG 기반 인텔리전트 챗봇 서비스입니다.**
 
-> **현재 상태**: ✅ RAG 파이프라인 완성 (Inference Server를 Hugging Face Spaces에 MSA로 분리 배포 완료, 하이브리드 벡터+FTS 검색 연동 완료, SSE 스트리밍 챗봇 엔드포인트 운영 중) | ✅ 프론트엔드 완성 (Next.js App Router 기반 모바일-퍼스트 챗봇 UI, SSE 스트리밍 연동, 차량 Cascade 선택 위젯 구현) | ✅ 백엔드 운영 고도화 진행 (요청 단위 LLM 모델 선택, Grok(xAI) 모델 확장, 공통 httpx AsyncClient 커넥션 풀, OpenTelemetry 기반 Grafana 로그 전송)
+> **현재 상태**: ✅ RAG 파이프라인 완성 (Inference Server를 Hugging Face Spaces에 MSA로 분리 배포 완료, 하이브리드 벡터+FTS 검색 연동 완료, SSE 스트리밍 챗봇 엔드포인트 운영 중) | ✅ 프론트엔드 완성 (Next.js App Router 기반 모바일-퍼스트 챗봇 UI, SSE 스트리밍 연동, 차량 Cascade 선택 위젯 구현) | ✅ 백엔드 운영 고도화 진행 (요청 단위 LLM 모델 선택, Grok(xAI) 모델 확장, 공통 httpx AsyncClient 커넥션 풀, OpenTelemetry 기반 Grafana 로그 전송, 외부 API retry 및 in-memory 임베딩 캐시 실습 적용)
 
 ---
 
@@ -26,6 +26,7 @@
 | 🔬 **하이브리드 RAG 검색** | 의미 기반(Vector Semantic Search)과 키워드 일치(Full-Text Search)를 **수학적으로 혼합**하여 어떤 질문에도 정확도 높은 문서를 검색합니다. |
 | 🧩 **MSA 마이크로서비스 아키텍처** | 무거운 AI 추론(임베딩)을 독립 서버로 분리하여, 메인 서버는 가볍고 빠르게 유지하면서 각 서비스를 독립적으로 확장 가능합니다. |
 | 🧠 **요청별 LLM 모델 선택** | OpenAI, Gemini, Grok(xAI) 모델을 Registry 패턴으로 등록하고, 요청의 `llm_config`에 따라 실행 모델을 동적으로 선택합니다. |
+| 🛡️ **외부 API 방어막 실습** | Hugging Face 임베딩 호출을 별도 client로 분리하고, retry 및 in-memory TTL cache를 적용하여 일시 장애와 반복 호출 비용을 줄이는 구조를 실습 중입니다. |
 | 📈 **운영 관측성 강화** | LangSmith로 LLM 체인을 추적하고, OpenTelemetry OTLP 로그를 Grafana Cloud로 전송하여 장애 분석과 운영 가시성을 높입니다. |
 
 ---
@@ -218,6 +219,15 @@ Client Response ← CommonResponse 규격 또는 실시간 StreamingResponse(SSE
 * **Double-Checked Locking**: 동시에 여러 요청이 최초 client 생성을 시도해도 `asyncio.Lock`으로 단 1개 인스턴스만 생성되도록 보호합니다.
 * **Timeout / Limits 중앙화**: connect, read, write, pool timeout과 최대 연결 수를 한 곳에서 관리해 외부 API 장애가 백엔드 전체로 번지는 것을 줄입니다.
 * **외부 호출 로깅 표준화**: httpx `event_hooks`로 요청 URL, 응답 상태 코드, 소요 시간을 공통 로그로 남겨 장애 분석 단서를 확보합니다.
+
+### 외부 API 방어막 & In-memory Cache (4-2 실습 진행 중)
+`/api/v1/chat/stream/advanced`는 LLM, Hugging Face 임베딩 서버, Supabase RPC를 순차적으로 호출합니다. 이 중 하나가 느려지거나 실패하면 전체 SSE 응답이 지연될 수 있으므로, 4단계 실습에서 외부 호출 방어막을 단계적으로 적용하고 있습니다.
+
+* **Retry 유틸리티**: `backend/app/utils/retry.py`에 비동기 외부 호출 재시도 공통 함수를 분리했습니다. `httpx` timeout/connect 계열 오류처럼 일시적으로 복구 가능한 장애만 retry 대상으로 다룹니다.
+* **EmbeddingClient 분리**: Hugging Face 임베딩 서버 호출을 `backend/app/base/embedding_client.py`로 분리하여, `ChatService`가 HTTP 호출 세부사항을 직접 알지 않도록 개선했습니다.
+* **In-memory TTL Cache**: `backend/app/utils/in_memory_cache.py`에 `cachetools.TTLCache` 기반 학습용 캐시를 추가하고, 키워드 기반 임베딩 벡터를 재사용하도록 연결했습니다.
+* **SSE 예외 가딩 개선**: 스트리밍 중 예외가 발생해도 `event: error` SSE 메시지로 변환하여 프론트엔드가 에러 상태를 인지할 수 있게 했습니다.
+* **남은 과제**: Circuit Breaker, provider fallback, Redis 기반 분산 캐시, 캐시 hit/miss 검증, 운영용 에러 메시지 표준화가 다음 단계입니다.
 
 ### 실시간 응답 스트리밍 & 예외 가딩 (SSE Architecture)
 답변 생성이 오래 걸리는 LLM의 단점을 극복하고 뛰어난 UX를 제공하기 위해 **SSE(Server-Sent Events)** 방식을 채택하고, 스트리밍 중 예외를 안전하게 가로채는 **Safe-Guard 아키텍처**를 구축했습니다.

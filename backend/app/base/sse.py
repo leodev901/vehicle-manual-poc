@@ -24,15 +24,19 @@ class SafeGuardStreamingResponse(StreamingResponse):
                 yield chunk
                 
         except asyncio.CancelledError:
-            # [추가] 클라이언트 연결 끊김 정상 처리 (에러 로깅 방지)
+            # 클라이언트가 브라우저 탭을 닫거나 네트워크가 끊긴 상황입니다.
+            # 서버 장애가 아니므로 error 로그가 아니라 info 로그로 남깁니다.
             logger.info(f"[{self.trace_id}] Client disconnected during SSE stream.")
             raise  # 프레임워크가 자원을 정리할 수 있도록 위로 던짐        
         
         except Exception as e:
             # 서버 내부 로깅 (raw exception 기록)
+            # 내부 로그에는 예외 타입과 내용을 남깁니다.
+            # 운영 장애 분석에는 실제 원인이 필요하기 때문입니다.
             logger.error(f"[{self.trace_id}] SSE stream error: {type(e).__name__} - {e}")
             # 클라이언트에는 사용자 친화적 메시지만 전송
-            yield f'data: {json.dumps({"status": "error", "message": str(e)}, ensure_ascii=False)}\n\n'
+            yield "event: error\n"
+            yield f'data: {json.dumps({"status": "error", "message": f"요청 처리 중 일시적인 문제가 발생했습니다. {type(e).__name__}"}, ensure_ascii=False)}\n\n'
         
 
     

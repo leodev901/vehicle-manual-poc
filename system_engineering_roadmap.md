@@ -43,16 +43,45 @@ FastAPI 기반의 어플리케이션을 넘어서, 수만 명의 트래픽을 �
    - [x] `hpa.yaml` 및 `values.yaml` 리소스 임계치 리뷰 완료 (✅ **완료**)
    - [x] CPU Throttling 및 스케일링 정책(Stabilization) 이해 (✅ **완료**)
 
-## 🔴 4단계: 데이터베이스 생존기 및 폭주 제어
+## 🟠 4단계: 데이터베이스 생존기 및 폭주 제어 — 진행 중
 1. **커넥션 풀(Connection Pool)의 한계와 PgBouncer**
-   - **실습:** 워커 증식으로 인한 DB 소켓 고갈(`Too many connections`) 재현 및 PgBouncer로 방어.
+   - [x] **이론:** Worker/Pod 증가 시 SQLAlchemy Pool도 함께 증가하는 구조 이해 (✅ **완료**)
+   - [x] **부하 테스트:** `hey`로 `/health_check` 동시 요청 부하를 걸고 latency 증가 관측 (✅ **완료**)
+   - [x] **PgBouncer 개념:** PgBouncer는 코드 옵션이 아니라 PostgreSQL 앞단의 커넥션 프록시이며, `prepared_statement_cache_size=0`은 PgBouncer 호환 준비 설정임을 정리 (✅ **완료**)
+   - [ ] **선택 실습:** Supabase Pooler/PgBouncer 연결 URL로 교체 후 직접 연결 방식과 비교
+   > 📖 학습 노트: `docs_study/learning_step4_database_resilience.md`
 2. **외부 API 방어막 (Circuit Breaker) & 시맨틱 캐싱 (비용 최적화)**
-   - **실습:** OpenAI 서버 장애 시 Gemini로 우회하는 서킷 브레이커 방어하기 및 `Tenacity` 재시도 파이프라인.
-   - **실습:** `Redis`를 붙여서 똑같은 질문에 대해 LLM API를 안 치고 0.1초 만에 캐시에서 응답 반환하기.
+   - [x] **Retry 유틸리티:** 외부 HTTP 호출용 `retry_async()` 및 `RetryExhaustedError` 작성 (✅ **진행 완료**)
+   - [x] **EmbeddingClient 분리:** Hugging Face 임베딩 호출을 별도 client로 분리 (✅ **진행 완료**)
+   - [x] **In-memory 임베딩 캐시:** Redis 도입 전 학습용 TTL cache로 임베딩 벡터 재사용 구조 적용 (✅ **진행 완료**)
+   - [ ] **Circuit Breaker:** Hugging Face 임베딩 서버 반복 장애 시 빠른 실패 처리
+   - [ ] **Provider Fallback:** 키워드 추출/최종 답변 생성 시작 전 provider 우회 정책 설계
+   - [ ] **Redis Semantic Cache:** 분산 환경에서도 공유 가능한 캐시 저장소로 확장
+   > 📖 학습 노트: `docs_study/learning_step4_2_external_api_resilience.md`
 
-## 🟤 5단계: 관측성 (Observability)
-1. **분산 트레이싱 및 중앙 집중형 로깅**
-   - **실습:** `OpenTelemetry`나 `Datadog`, `LangSmith`를 붙여서 텍스트 입력부터 최종 답변까지 마이크로 단위 병목 지점을 대시보드화.
+## ✅ 5단계: 관측성 (Observability) — 완료
+LLM 애플리케이션은 일반 API 서버보다 장애 원인을 찾기 어렵습니다. 사용자의 질문이 들어온 뒤, 키워드 추출, 임베딩 서버 호출, Supabase RAG 검색, 최종 LLM 생성까지 여러 외부 시스템을 거치기 때문입니다.
+따라서 요청 단위 추적 ID와 LLM 실행 추적, 중앙 집중형 로그를 먼저 붙여 운영 중 병목과 실패 지점을 확인할 수 있는 기반을 마련했습니다.
+
+1. **LLM Observability: LangSmith**
+   - [x] `LANGCHAIN_TRACING_V2` 기반 LangChain LCEL 자동 트레이싱 적용 (✅ **완료**)
+   - [x] `APP_ENV`, `LANGCHAIN_PROJECT`, `LANGCHAIN_TAGS` 기반 환경별 추적 구분 (✅ **완료**)
+   - [x] 모델별 응답 지연, 토큰 사용량, 프롬프트 실행 흐름 확인 기반 마련 (✅ **완료**)
+   > 📖 학습 노트: `docs_study/learning_step4_langsmith.md`
+
+2. **Backend Observability: OpenTelemetry + Grafana**
+   - [x] `backend/app/base/opentelemetry.py` 기반 OTLP 로그 전송 구조 적용 (✅ **완료**)
+   - [x] FastAPI lifespan에서 `setup_opentelemetry()`, `shutdown_opentelemetry()` 연동 (✅ **완료**)
+   - [x] `middleware.py`에서 요청별 `trace_id` 생성 및 응답 헤더 전파 (✅ **완료**)
+   - [x] `contextvars` + `TraceIdFilter`로 비동기 요청 컨텍스트의 로그 추적성 확보 (✅ **완료**)
+   > 📖 학습 노트: `docs_study/learning_step5-1_opentelemetry_grafana.md`
+   > 📖 학습 노트: `docs_study/learning_step5-2_observability_advanced.md`
+
+3. **관측성 고도화 백로그**
+   - [ ] OpenTelemetry Trace/Metric까지 확장하여 로그뿐 아니라 요청 span, latency, error rate를 대시보드화
+   - [ ] `/api/v1/chat/stream/advanced` 내부 단계별 span 분리: 키워드 추출, 임베딩 호출, Supabase 검색, 최종 LLM 생성
+   - [ ] LangSmith run id와 백엔드 `trace_id`를 연결하여 장애 분석 시 양쪽 대시보드를 함께 추적
+   - [ ] Grafana Dashboard / Alert Rule 구성: error rate, p95 latency, 외부 API 실패율, SSE 중단율
 
 ---
 

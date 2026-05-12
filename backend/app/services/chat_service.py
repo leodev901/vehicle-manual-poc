@@ -12,7 +12,14 @@ from app.prompts.chat_prompts import MANUAL_KEYWORD_EXTRACTION_PROMPT, RAG_CHAT_
 from app.core.config import settings
 
 from app.base.http_client import get_httpx_client
+from app.base.embedding_client import embedding_client
 from app.base.logger import logger
+from app.utils.retry import retry_async
+from app.utils.in_memory_cache import memory_cache
+
+
+
+
 
 class ChatService:
 
@@ -313,7 +320,7 @@ class ChatService:
         yield 'data: {"status": "processing", "message": "AI 모델을 로딩 중입니다..."}\n\n'
         
         # 선택된 모델 인스턴스 가져오기
-        provider = payload.llm_config.provider.lower() or "grok"
+        provider = payload.llm_config.provider.lower() or "gemini"
         if provider not in self.models:
             logger.error(f"지원하지 않는 LLM 제공자입니다: {provider}")
             raise ValueError(f"지원하지 않는 LLM 제공자입니다: {provider}")
@@ -322,34 +329,38 @@ class ChatService:
         )
 
         # 키워드 추출 진행
-        response = await model.ainvoke(MANUAL_KEYWORD_EXTRACTION_PROMPT.format(question=payload.message))
+        # response = await model.ainvoke(MANUAL_KEYWORD_EXTRACTION_PROMPT.format(question=payload.message))
+        response = await retry_async(
+            "llm_keyword_extract",
+            lambda: model.ainvoke(MANUAL_KEYWORD_EXTRACTION_PROMPT.format(question=payload.message)),
+            max_attempts=3,
+            base_delay_seconds=0.5
+        )
         keywords = response.content.strip()
 
         print(f"keywords: {keywords}")
 
 
         yield 'data: {"status": "processing", "message": "임베딩 DB에서 관련 문서를 검색 중입니다..."}\n\n'
+        
 
+        # 쿼리 임베딩 캐싱 확인
+        cache_vector = await memory_cache.get_cache(keywords)
+        if cache_vector is not None:
+            query_vector = cache_vector
         
-        # 임베딩 서버 외부 HTTP 호출
-        client = await get_httpx_client()
-        
-        data = {
-            "text": keywords,
-        }
-        response = await client.post(
-            # "http://localhost:8010/api/v1/embed",
-            settings.HF_INFERENCE_URL,
-            headers={
-                "Authorization": f"Bearer {settings.HF_TOKEN}"
-            },
-            json=data
-        )
-        response.raise_for_status() 
-        query_vector = response.json()["embedding"]
-        if not query_vector:
-            raise ValueError("임베딩 서버에서 벡터를 생성하지 못했습니다.")
-        
+        else: 
+            # 임베딩 서버 외부 HTTP 호출
+            # query_vector = await embedding_client.get_embedding(keywords)
+            # retry 활용
+            query_vector = await retry_async(
+                "hf_embedding",
+                lambda: embedding_client.get_embedding(keywords),
+                max_attempts=3,
+                base_delay_seconds=0.5
+            )
+            # hf 호출 임베딩 결과 캐싱하기 
+            await memory_cache.set_cache(keywords, query_vector)
         
             
         # Supabase RAG 검색
