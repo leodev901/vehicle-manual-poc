@@ -82,7 +82,7 @@ def setup_opentelemetry() -> None:
     set_logger_provider(provider)
 
     otel_handler = LoggingHandler(
-        level=getattr(logging, getattr(settings,"LOG_LEVEL","INFO").upper(), logging.INFO),
+        level=getattr(logging, getattr(settings,"APP_LOG_LEVEL","INFO").upper(), logging.INFO),
         logger_provider=provider,
     )
 

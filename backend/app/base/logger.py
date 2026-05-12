@@ -60,7 +60,7 @@ def get_logger(
 
     return logger
 
-LOG_LEVEL = getattr(settings, "LOG_LEVEL", "INFO")
+LOG_LEVEL = getattr(settings, "APP_LOG_LEVEL", "INFO")
 LOG_FILE_PATH = getattr(settings, "LOG_FILE_PATH", "logs/vehicle_manual_rag.log")
 
 logger = get_logger(name="vehicle_manual_rag",level=LOG_LEVEL, log_file_path=LOG_FILE_PATH)

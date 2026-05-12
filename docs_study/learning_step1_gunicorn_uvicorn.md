@@ -270,7 +270,6 @@ data:
   APP_NAME: {{ .Values.env.app.name | quote }}
   APP_HOST: {{ .Values.env.app.host | quote }}
   APP_PORT: {{ .Values.env.app.port | quote }}
-  APP_LOG_LEVEL: {{ .Values.env.app.log_level | quote }}
   # 👇 추가
   GUNICORN_WORKERS: {{ .Values.service.worker | quote }}
   GUNICORN_TIMEOUT: "120"

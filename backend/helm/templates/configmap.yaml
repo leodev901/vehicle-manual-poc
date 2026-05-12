@@ -4,6 +4,7 @@ metadata:
   name: {{ .Release.Name }}-config
 data:
   APP_NAME: {{ .Values.service.name | quote }}
+  APP_ENV: {{ .Values.service.env | quote }}
   APP_HOST: {{ .Values.service.host | quote }}
   APP_PORT: {{ .Values.service.targetPort | quote }}
   APP_LOG_LEVEL: {{ .Values.service.log_level | quote }}
@@ -13,4 +14,17 @@ data:
   DEFAULT_PROVIDER: {{ .Values.env.llm.default_provider | quote }}
   OPENAI_MODEL: {{ .Values.env.llm.openai.model | quote }}
   GEMINI_MODEL: {{ .Values.env.llm.gemini.model | quote }}
+  XAI_MODEL: {{ .Values.env.llm.xai.model | quote }}
   HF_INFERENCE_URL: {{ .Values.env.huggingface.url | quote }}
+
+  LANGCHAIN_TRACING_V2: {{ .Values.env.langsmith.enabled | quote }}
+  LANGCHAIN_ENDPOINT: {{ .Values.env.langsmith.endpoint | quote }}
+  LANGCHAIN_API_KEY: {{ .Values.env.langsmith.api_key | quote }}
+  LANGCHAIN_PROJECT: {{ .Values.env.langsmith.project | quote }}
+
+  ENABLE_OTEL_DIRECT: {{ .Values.env.opentelemetry.enabled | quote }}
+  GRAFANA_ENDPOINT: {{ .Values.env.opentelemetry.endpoint | quote  }}
+  GRAFANA_INSTANCE_ID: {{ .Values.env.opentelemetry.instanceId | quote }}
+  GRAFANA_API_TOKEN: {{ .Values.env.opentelemetry.apiToken | quote }}
+
+

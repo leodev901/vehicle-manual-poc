@@ -22,7 +22,7 @@ max_requests_jitter = 50  # 100~150회 랜덤 (부하 분산)
 # 5. 타임아웃 설정 (LLM 응답 시간 고려)
 # SSE 스트리밍을 위한 타임아웃 설정 (매우 중요!)
 # LLM 스트리밍은 수십 초가 걸릴 수 있으므로 기본 30초보다 넉넉하게 설정합니다.
-timeout = 180  # 3분 (LLM 최대 응답 시간보다 충분히 길게)
+timeout = int(os.getenv("GUNICORN_TIMEOUT", "180"))  # 3분 (LLM 최대 응답 시간보다 충분히 길게)
 keepalive = 5   # K8s 환경 2~5초 이하 권장 (K8s Service의 idle 연결 끊기 정책과 충돌 방지)
 
 

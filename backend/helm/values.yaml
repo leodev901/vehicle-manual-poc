@@ -25,6 +25,7 @@ service:
   targetPort: 8080
   host: "0.0.0.0"
   log_level: "info"
+  env: "prod"
   
   # Gunicorn Worker 설정
   worker: 1
@@ -87,6 +88,9 @@ env:
     gemini:
       api_key: "github-secret-gemini-api-key" 
       model: "gemini-2.5-flash-lite"
+    xai:
+      api_key: "github-secret-xai-api-key"
+      model: "grok-beta"
 
   # Hugging Face
   huggingface:
@@ -94,4 +98,18 @@ env:
     token: "github-secret-hf-token"
 
 
+  # LangSmith
+  langsmith:
+    enabled: true
+    endpoint: "https://api.smith.langchain.com"
+    api_key: "github-secret-langsmith-api-key"
+    project: "vehicle-manual-poc"
+
+  # OpenTelemetry - Grafana
+  opentelemetry:
+    enabled: true
+    endpoint: "https://otlp-gateway-prod-ap-northeast-0.grafana.net/otlp/v1/logs"
+    instanceId: 1556283
+    apiToken: "github-secret-opentelemetry-api-token"
+  
 
